@@ -9,7 +9,8 @@ screen = pygame.display.set_mode((800, 600))
 
 # Title and Icon
 pygame.display.set_caption("Battleships")
-
+icon = pygame.image.load('ship.png')
+pygame.display.set_icon(icon)
 
 # Game loop
 Running = True
