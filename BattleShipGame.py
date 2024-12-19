@@ -1,0 +1,19 @@
+import pygame
+
+
+# Initialize pygame
+pygame.init()
+
+# create the screen
+screen = pygame.display.set_mode((800, 600))
+
+# Title and Icon
+pygame.display.set_caption("Battleships")
+
+
+# Game loop
+Running = True
+while Running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            Running = False
