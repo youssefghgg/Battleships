@@ -19,5 +19,5 @@ while Running:
         if event.type == pygame.QUIT:
             Running = False
     # R-G-B
-    screen.fill((0, 0, 0))
+    screen.fill((240, 240, 240))
     pygame.display.update()
