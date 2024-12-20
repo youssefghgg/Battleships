@@ -11,7 +11,7 @@ height = 600
 screen = pygame.display.set_mode((width, height))
 rows = 10
 cols = 10
-cells_size = 50
+cells_size = 33
 
 
 # Title and Icon
@@ -38,7 +38,6 @@ def CreatedGameGrid(rows, cols, cells_size, position):
         start_x = position[0]
         start_y += cells_size
     return grid
-
 def UPGameLogic(rows, cols):
     # Updates game grid space and x with ships
     logic = []
@@ -48,7 +47,6 @@ def UPGameLogic(rows, cols):
             row_x.append(" ")
             logic.append(row_x)
         return logic
-
 def printLogic():
     print("Player Grid".center(50, '#'))
     for x in pGameLogic:
@@ -87,7 +85,6 @@ def game_mode_menu():
                     return 'back'
 
         pygame.display.update()
-
 def draw_grid_with_labels(x_start, y_start, cell_size, rows, cols):
     # Draw the grid
     for row in range(rows):
@@ -106,12 +103,22 @@ def draw_grid_with_labels(x_start, y_start, cell_size, rows, cols):
     for j in range(cols):
         label = font.render(str(j + 1), True, (255, 255, 255))
         screen.blit(label, (x_start + j * cell_size + 15, y_start - 30))
+def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_height, ship_width, ship_height):
+    """Snap the ship to the nearest valid grid cell, respecting grid boundaries."""
+    snapped_x = round((x - grid_start_x) / cell_size) * cell_size + grid_start_x
+    snapped_y = round((y - grid_start_y) / cell_size) * cell_size + grid_start_y
 
-def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size):
-    grid_x = ((x - grid_start_x) // cell_size) * cell_size + grid_start_x
-    grid_y = ((y - grid_start_y) // cell_size) * cell_size + grid_start_y
-    return grid_x, grid_y
+    # Ensure the ship stays within the grid boundaries
+    if snapped_x + ship_width > grid_start_x + grid_width:
+        snapped_x = grid_start_x + grid_width - ship_width
+    if snapped_y + ship_height > grid_start_y + grid_height:
+        snapped_y = grid_start_y + grid_height - ship_height
+    if snapped_x < grid_start_x:
+        snapped_x = grid_start_x
+    if snapped_y < grid_start_y:
+        snapped_y = grid_start_y
 
+    return snapped_x, snapped_y
 def singleplayer_setup():
     running = True
 
@@ -141,15 +148,51 @@ def singleplayer_setup():
                         selected_ship = ship
                         break
 
+
+
+
             elif event.type == pygame.MOUSEBUTTONUP:
+
                 if selected_ship:
+
                     selected_ship["dragging"] = False
-                    selected_ship["rect"].x, selected_ship["rect"].y = snap_to_grid(
+
+                    # Snap to grid with boundary checks
+
+                    snapped_x, snapped_y = snap_to_grid(
+
                         selected_ship["rect"].x,
+
                         selected_ship["rect"].y,
-                        50, 100, cells_size
+
+                        50,  # Grid start x
+
+                        100,  # Grid start y
+
+                        cells_size,  # Cell size
+
+                        cols * cells_size,  # Grid width
+
+                        rows * cells_size,  # Grid height
+
+                        selected_ship["rect"].width,  # Ship width
+
+                        selected_ship["rect"].height,  # Ship height
+
                     )
-                    selected_ship = None
+
+                    # Set snapped position
+
+                    selected_ship["rect"].x, selected_ship["rect"].y = snapped_x, snapped_y
+
+                    # Check for overlap and resolve it
+
+                    if any(ship != selected_ship and selected_ship["rect"].colliderect(ship["rect"]) for ship in ships):
+                        nearest_x, nearest_y = find_nearest_valid_position(selected_ship, ships)
+
+                        selected_ship["rect"].x, selected_ship["rect"].y = nearest_x, nearest_y
+
+
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r and selected_ship:
@@ -185,9 +228,35 @@ def singleplayer_setup():
             draw_button("Start", (0, 255, 0), start_button)
 
         pygame.display.update()
+def find_nearest_valid_position(selected_ship, ships):
+    valid_positions = []
 
+    for row in range(rows):
+        for col in range(cols):
+            grid_x = 50 + col * cells_size
+            grid_y = 100 + row * cells_size
 
+            # Ensure the ship fits within the grid boundaries
+            if grid_x + selected_ship["rect"].width <= 50 + cols * cells_size and \
+               grid_y + selected_ship["rect"].height <= 100 + rows * cells_size:
 
+                # Create a temp rect for collision checking
+                temp_rect = pygame.Rect(grid_x, grid_y, selected_ship["rect"].width, selected_ship["rect"].height)
+
+                # Ensure no overlap with other ships
+                if not any(temp_rect.colliderect(ship["rect"]) for ship in ships if ship != selected_ship):
+                    valid_positions.append((grid_x, grid_y))
+
+    # Find the closest valid position
+    current_center = selected_ship["rect"].center
+    nearest_position = min(valid_positions, key=lambda pos: (pos[0] - current_center[0])**2 + (pos[1] - current_center[1])**2)
+    return nearest_position
+def check_collision(new_ship_rect, all_ships):
+    """Check if the new ship overlaps with any existing ships."""
+    for ship in all_ships:
+        if ship["rect"].colliderect(new_ship_rect):
+            return True  # Collision detected
+    return False  # No collision
 def start_game(player_ships):
     running = True
 
@@ -204,19 +273,17 @@ def start_game(player_ships):
 
         # Draw grids
         draw_grid_with_labels(50, 100, cells_size, rows, cols)  # Player grid
-        draw_grid_with_labels(450, 100, cells_size, rows, cols)  # Computer grid
+        draw_grid_with_labels(width - cols * cells_size - 50, 100, cells_size, rows, cols)  # Computer grid
 
         # Draw player ships
         for ship in player_ships:
             pygame.draw.rect(screen, (0, 255, 0), ship["rect"])
 
-        # Draw computer ships for now (hidden in actual gameplay)
+        # Draw computer ships
         for ship in computer_ships:
-            pygame.draw.rect(screen, (255, 0, 0), ship["rect"])
+            pygame.draw.rect(screen, (255, 0, 0), ship["rect"])  # For now, show them. Hide in actual gameplay.
 
         pygame.display.update()
-
-
 def generate_computer_ships():
     ships = [
         {"name": "Submarine", "size": 2},
@@ -226,28 +293,44 @@ def generate_computer_ships():
         {"name": "Air Carrier", "size": 5},
     ]
     placed_ships = []
-
+    grid_start_x = width - cols * cells_size - 50
+    grid_start_y = 100
+    grid_width = cols * cells_size
+    grid_height = rows * cells_size
     for ship in ships:
         placed = False
         while not placed:
             orientation = random.choice(["horizontal", "vertical"])
             if orientation == "horizontal":
-                start_x = random.randint(50, 50 + (cols - ship["size"]) * cells_size)
-                start_y = random.randint(100, 100 + (rows - 1) * cells_size)
+                start_col = random.randint(0, cols - ship["size"])
+                start_row = random.randint(0, rows - 1)
+                start_x = start_col * cells_size + grid_start_x
+                start_y = start_row * cells_size + grid_start_y
                 rect = pygame.Rect(start_x, start_y, ship["size"] * cells_size, cells_size)
             else:
-                start_x = random.randint(50, 50 + (cols - 1) * cells_size)
-                start_y = random.randint(100, 100 + (rows - ship["size"]) * cells_size)
+                start_col = random.randint(0, cols - 1)
+                start_row = random.randint(0, rows - ship["size"])
+                start_x = start_col * cells_size + grid_start_x
+                start_y = start_row * cells_size + grid_start_y
                 rect = pygame.Rect(start_x, start_y, cells_size, ship["size"] * cells_size)
-
+            # Snap to grid
+            snapped_x, snapped_y = snap_to_grid(
+                rect.x,
+                rect.y,
+                grid_start_x,
+                grid_start_y,
+                cells_size,
+                grid_width,
+                grid_height,
+                rect.width,
+                rect.height,
+            )
+            rect.x, rect.y = snapped_x, snapped_y
             # Ensure no overlap
             if not any(r["rect"].colliderect(rect) for r in placed_ships):
-                placed_ships.append({"name": ship["name"], "rect": rect})
+                placed_ships.append({"name": ship["name"], "rect": rect, "horizontal": orientation == "horizontal"})
                 placed = True
-
     return placed_ships
-
-
 def rotate_ship(ship):
     """Rotate the ship between horizontal and vertical."""
     if ship["horizontal"]:
@@ -255,14 +338,22 @@ def rotate_ship(ship):
     else:
         ship["rect"].width, ship["rect"].height = ship["rect"].height, ship["rect"].width
     ship["horizontal"] = not ship["horizontal"]
-
-
-def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size):
-    """Snap the ship to the nearest grid cell."""
+def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_height, ship_width, ship_height):
+    """Snap the ship to the nearest grid cell and keep it within bounds."""
     snapped_x = round((x - grid_start_x) / cell_size) * cell_size + grid_start_x
     snapped_y = round((y - grid_start_y) / cell_size) * cell_size + grid_start_y
-    return snapped_x, snapped_y
 
+    # Ensure the ship does not go outside the grid
+    if snapped_x + ship_width > grid_start_x + grid_width:
+        snapped_x = grid_start_x + grid_width - ship_width
+    if snapped_y + ship_height > grid_start_y + grid_height:
+        snapped_y = grid_start_y + grid_height - ship_height
+    if snapped_x < grid_start_x:
+        snapped_x = grid_start_x
+    if snapped_y < grid_start_y:
+        snapped_y = grid_start_y
+
+    return snapped_x, snapped_y
 
 # Loading Game
 pGameGrid = CreatedGameGrid(rows, cols, cells_size, (50, 50))
@@ -277,7 +368,6 @@ def draw_button(text, color, rect):
     font = pygame.font.SysFont("Arial", 40)
     text_surface = font.render(text, True, (0, 0, 0))
     screen.blit(text_surface, (rect.x + 10, rect.y + 10))
-
 def main_menu():
     menu_running = True
     while menu_running:
@@ -309,8 +399,6 @@ def main_menu():
                     return 'quit'
 
         pygame.display.update()
-
-
 # Game Loop (after the menu)
 def game_loop():
     running = True
@@ -370,6 +458,5 @@ while running:
     screen.blit(scaled_image, (0, 0))
     screen.blit(title_text, title_rect)
     pygame.display.update()
-
 
 pygame.quit()
