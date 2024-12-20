@@ -152,81 +152,52 @@ def singleplayer_setup():
 
 
             elif event.type == pygame.MOUSEBUTTONUP:
-
                 if selected_ship:
-
                     selected_ship["dragging"] = False
-
                     # Snap to grid with boundary checks
-
                     snapped_x, snapped_y = snap_to_grid(
-
                         selected_ship["rect"].x,
-
                         selected_ship["rect"].y,
-
                         50,  # Grid start x
-
                         100,  # Grid start y
-
                         cells_size,  # Cell size
-
                         cols * cells_size,  # Grid width
-
                         rows * cells_size,  # Grid height
-
                         selected_ship["rect"].width,  # Ship width
-
                         selected_ship["rect"].height,  # Ship height
-
                     )
-
                     # Set snapped position
-
                     selected_ship["rect"].x, selected_ship["rect"].y = snapped_x, snapped_y
-
                     # Check for overlap and resolve it
-
                     if any(ship != selected_ship and selected_ship["rect"].colliderect(ship["rect"]) for ship in ships):
                         nearest_x, nearest_y = find_nearest_valid_position(selected_ship, ships)
-
                         selected_ship["rect"].x, selected_ship["rect"].y = nearest_x, nearest_y
-
-
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r and selected_ship:
                     rotate_ship(selected_ship)
-
         if selected_ship and selected_ship["dragging"]:
             mouse_x, mouse_y = pygame.mouse.get_pos()
             selected_ship["rect"].center = (mouse_x, mouse_y)
-
         all_ships_placed = all(
             50 <= ship["rect"].x < 50 + cols * cells_size and
             100 <= ship["rect"].y < 100 + rows * cells_size
             for ship in ships
         )
-
         screen.blit(scaled_image, (0, 0))
-
         setup_font = pygame.font.SysFont('Arial', 50)
         setup_text = setup_font.render("Player 1: Pick Positions", True, (255, 255, 255))
         setup_rect = setup_text.get_rect(center=(width // 2, 50))
         screen.blit(setup_text, setup_rect)
-
         draw_grid_with_labels(50, 100, cells_size, rows, cols)
-
         for ship in ships:
             pygame.draw.rect(screen, (0, 255, 0), ship["rect"])
             font = pygame.font.SysFont('Arial', 20)
             label = font.render(ship["name"], True, (255, 255, 255))
             screen.blit(label, (ship["rect"].x, ship["rect"].y - 20))
-
         if all_ships_placed:
             start_button = pygame.Rect(width - 200, height - 100, 150, 50)
             draw_button("Start", (0, 255, 0), start_button)
-
         pygame.display.update()
 def find_nearest_valid_position(selected_ship, ships):
     valid_positions = []
