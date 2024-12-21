@@ -21,7 +21,7 @@ BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 ORANGE = (255, 165, 0)
 PURPLE = (128, 0, 128)
-
+RED = (255, 0, 0)
 
 # Title and Icon
 pygame.display.set_caption("Battleships")
@@ -30,7 +30,7 @@ pygame.display.set_icon(icon)
 background_image = pygame.image.load('background.jpeg')
 scaled_image = pygame.transform.scale(background_image,(width,height))
 title_font = pygame.font.SysFont('Comic Sans MS', 70)
-title_text = title_font.render("BattleShips", True, (255, 255, 255))
+title_text = title_font.render("BattleShips", True, WHITE)
 title_rect = title_text.get_rect(center=(width // 2, 100))
 
 # Game Functions
@@ -100,17 +100,17 @@ def draw_grid_with_labels(x_start, y_start, cell_size, rows, cols):
         for col in range(cols):
             x = x_start + col * cell_size
             y = y_start + row * cell_size
-            pygame.draw.rect(screen, (255, 255, 255), pygame.Rect(x, y, cell_size, cell_size), 1)
+            pygame.draw.rect(screen, WHITE, pygame.Rect(x, y, cell_size, cell_size), 1)
 
     # Draw row labels (A-J)
     font = pygame.font.SysFont('Arial', 30)
     for i in range(rows):
-        label = font.render(chr(65 + i), True, (255, 255, 255))  # A=65 in ASCII
+        label = font.render(chr(65 + i), True, WHITE)  # A=65 in ASCII
         screen.blit(label, (x_start - 30, y_start + i * cell_size + 10))
 
     # Draw column labels (1-10)
     for j in range(cols):
-        label = font.render(str(j + 1), True, (255, 255, 255))
+        label = font.render(str(j + 1), True, WHITE)
         screen.blit(label, (x_start + j * cell_size + 15, y_start - 30))
 def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_height, ship_width, ship_height):
     """Snap the ship to the nearest valid grid cell, respecting grid boundaries."""
@@ -157,9 +157,6 @@ def singleplayer_setup():
                         selected_ship = ship
                         break
 
-
-
-
             elif event.type == pygame.MOUSEBUTTONUP:
                 if selected_ship:
                     selected_ship["dragging"] = False
@@ -195,18 +192,18 @@ def singleplayer_setup():
         )
         screen.blit(scaled_image, (0, 0))
         setup_font = pygame.font.SysFont('Arial', 50)
-        setup_text = setup_font.render("Player 1: Pick Positions", True, (255, 255, 255))
+        setup_text = setup_font.render("Player 1: Pick Positions", True, WHITE)
         setup_rect = setup_text.get_rect(center=(width // 2, 50))
         screen.blit(setup_text, setup_rect)
         draw_grid_with_labels(50, 100, cells_size, rows, cols)
         for ship in ships:
-            pygame.draw.rect(screen, (0, 255, 0), ship["rect"])
+            pygame.draw.rect(screen, GREEN, ship["rect"])
             font = pygame.font.SysFont('Arial', 20)
-            label = font.render(ship["name"], True, (255, 255, 255))
+            label = font.render(ship["name"], True, WHITE)
             screen.blit(label, (ship["rect"].x, ship["rect"].y - 20))
         if all_ships_placed:
             start_button = pygame.Rect(width - 200, height - 100, 150, 50)
-            draw_button("Start", (0, 255, 0), start_button)
+            draw_button("Start", GREEN, start_button)
         pygame.display.update()
 def computer_turn():
     # Pick random row and column
@@ -218,7 +215,7 @@ def computer_turn():
     grid_start_y = 100
 
     # Highlight the chosen cell
-    pygame.draw.rect(screen, (255, 0, 0),
+    pygame.draw.rect(screen, RED,
                      pygame.Rect(grid_start_x + col * cells_size,
                                  grid_start_y + row * cells_size,
                                  cells_size, cells_size))
@@ -269,19 +266,15 @@ def start_game(player_ships):
             if event.type == pygame.QUIT:
                 running = False
                 return 'quit'
-
         screen.blit(scaled_image, (0, 0))
-
         if player_turn:
             # Handle player shooting
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left mouse button click
                     mouse_x, mouse_y = event.pos
-
                     # Check if the click is within the computer grid
                     grid_start_x = width - cols * cells_size - 50
                     grid_start_y = 100
-
                     if grid_start_x <= mouse_x < grid_start_x + cols * cells_size and grid_start_y <= mouse_y < grid_start_y + rows * cells_size:
                         # Calculate grid coordinates
                         col = (mouse_x - grid_start_x) // cells_size
@@ -293,8 +286,8 @@ def start_game(player_ships):
                             hit = False
                             for ship in computer_ships:
                                 if ship["rect"].collidepoint(
-                                    grid_start_x + col * cells_size + cells_size // 2,
-                                    grid_start_y + row * cells_size + cells_size // 2
+                                        grid_start_x + col * cells_size + cells_size // 2,
+                                        grid_start_y + row * cells_size + cells_size // 2
                                 ):
                                     computer_grid_status[row][col] = 'hit'
                                     hit = True
@@ -302,37 +295,32 @@ def start_game(player_ships):
                             if not hit:
                                 computer_grid_status[row][col] = 'miss'
 
+                            # Update the grid status immediately
+                            if computer_grid_status[row][col] == 'hit':
+                                color = ORANGE  # Orange for hit
+                            else:
+                                color = PURPLE  # Purple for miss
+                            pygame.draw.rect(screen, color, (
+                            grid_start_x + col * cells_size, grid_start_y + row * cells_size, cells_size, cells_size))
+                            pygame.display.update()
+
                             # Switch to the computer's turn
                             player_turn = False
-
         else:
             # Computer's turn
             font = pygame.font.SysFont('Arial', 40)
-            thinking_message = font.render("Computer thinking...", True, (255, 255, 255))
+            thinking_message = font.render("Computer thinking...", True, WHITE)
             screen.blit(thinking_message, (width // 2 - thinking_message.get_width() // 2, 10))
             pygame.display.update()
-
             time.sleep(2)  # Simulate "thinking" delay
-
             # Computer shoots randomly
             while True:
                 row = random.randint(0, rows - 1)
                 col = random.randint(0, cols - 1)
                 if player_grid_status[row][col] is None:  # If untouched
-                    # Determine if it's a hit or miss
-                    hit = False
-                    for ship in player_ships:
-                        if ship["rect"].collidepoint(
-                            50 + col * cells_size + cells_size // 2,
-                            100 + row * cells_size + cells_size // 2
-                        ):
-                            player_grid_status[row][col] = 'hit'
-                            hit = True
-                            break
-                    if not hit:
-                        player_grid_status[row][col] = 'miss'
+                    handle_shooting(row, col, player_grid_status, 50, 100)  # Use handle_shooting to display result
+                    pygame.display.update()  # Ensure the grid visually updates
                     break
-
             # Switch to the player's turn
             player_turn = True
 
@@ -342,11 +330,11 @@ def start_game(player_ships):
 
         # Draw player ships
         for ship in player_ships:
-            pygame.draw.rect(screen, (0, 255, 0), ship["rect"])
+            pygame.draw.rect(screen, GREEN, ship["rect"])
 
         # Draw computer ships (for testing, show them, hide in the actual game)
         for ship in computer_ships:
-            pygame.draw.rect(screen, (255, 0, 0), ship["rect"])
+            pygame.draw.rect(screen, RED, ship["rect"])
 
         # Draw the status of the grids (hit/miss)
         grid_start_x_computer = width - cols * cells_size - 50
@@ -366,9 +354,9 @@ def start_game(player_ships):
                 # Player grid
                 cell_status = player_grid_status[row][col]
                 if cell_status == 'hit':
-                    color = (255, 165, 0)  # Orange for hit
+                    color = ORANGE  # Orange for hit
                 elif cell_status == 'miss':
-                    color = (128, 0, 128)  # Purple for miss
+                    color = PURPLE  # Purple for miss
                 else:
                     continue
                 pygame.draw.rect(screen, color, (50 + col * cells_size, 100 + row * cells_size, cells_size, cells_size))
@@ -379,8 +367,38 @@ def start_game(player_ships):
         else:
             message = "Computer's turn!"
         font = pygame.font.SysFont('Arial', 40)
-        message_surface = font.render(message, True, (255, 255, 255))
+        message_surface = font.render(message, True, WHITE)
         screen.blit(message_surface, (width // 2 - message_surface.get_width() // 2, 10))
+        # Redraw grids and their statuses after each turn
+        draw_grid_with_labels(50, 100, cells_size, rows, cols)  # Player grid
+        draw_grid_with_labels(width - cols * cells_size - 50, 100, cells_size, rows, cols)  # Computer grid
+
+        # Update the grid statuses visually
+        grid_start_x_computer = width - cols * cells_size - 50
+        grid_start_y_computer = 100
+        for row in range(rows):
+            for col in range(cols):
+                # Player grid
+                cell_status = player_grid_status[row][col]
+                if cell_status == "H":
+                    color = ORANGE  # Orange for hit
+                elif cell_status == "M":
+                    color = PURPLE  # Purple for miss
+                else:
+                    continue
+                pygame.draw.rect(screen, color, (50 + col * cells_size, 100 + row * cells_size, cells_size, cells_size))
+
+                # Computer grid
+                cell_status = computer_grid_status[row][col]
+                if cell_status == "H":
+                    color = ORANGE  # Orange for hit
+                elif cell_status == "M":
+                    color = PURPLE  # Purple for miss
+                else:
+                    continue
+                pygame.draw.rect(screen, color, (
+                grid_start_x_computer + col * cells_size, grid_start_y_computer + row * cells_size, cells_size,
+                cells_size))
         pygame.display.update()
 def generate_computer_ships():
     ships = [
@@ -459,10 +477,10 @@ def handle_shooting(row, col, target_grid, display_x, display_y):
     # Get the cell coordinates
     x = display_x + col * cells_size
     y = display_y + row * cells_size
-    color = (128, 0, 128)  # Default to purple for a miss
+    color = PURPLE  # Default to purple for a miss
 
     if target_grid[row][col] == "S":  # If there's a ship
-        color = (255, 165, 0)  # Orange for a hit
+        color = ORANGE  # Orange for a hit
         target_grid[row][col] = "H"  # Mark as hit
     else:
         target_grid[row][col] = "M"  # Mark as miss
@@ -526,9 +544,9 @@ def main_menu():
         quit_button = pygame.Rect(width // 2 - 100, 400, 200, 50)
 
         # Draw buttons
-        draw_button("Start Game", (0, 255, 0), start_button)
+        draw_button("Start Game", GREEN, start_button)
         draw_button("Settings", (255, 255, 0), settings_button)
-        draw_button("Quit", (255, 0, 0), quit_button)
+        draw_button("Quit", RED, quit_button)
 
         # Check for events
         for event in pygame.event.get():
@@ -559,11 +577,11 @@ def game_loop():
         # Draw the game grid
         for row in pGameGrid:
             for cell in row:
-                pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
+                pygame.draw.rect(screen, BLACK, pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
 
         for row in cGameGrid:
             for cell in row:
-                pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
+                pygame.draw.rect(screen, BLACK, pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
 
         pygame.display.update()
 
