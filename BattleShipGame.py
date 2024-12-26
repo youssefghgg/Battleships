@@ -197,20 +197,7 @@ def singleplayer_setup():
             start_button = pygame.Rect(width - 200, height - 100, 150, 50)
             draw_button("Start", GREEN, start_button)
         pygame.display.update()
-def computer_turn():
-    #Picks random row and column
-    row = random.randint(0, rows - 1)
-    col = random.randint(0, cols - 1)
 
-    #Player grid position
-    grid_start_x = 50
-    grid_start_y = 100
-
-    #Highlight the chosen cell
-    pygame.draw.rect(screen, RED,
-                     pygame.Rect(grid_start_x + col * cells_size,
-                                 grid_start_y + row * cells_size,
-                                 cells_size, cells_size))
 def find_nearest_valid_position(selected_ship, ships):
     valid_positions = []
 
@@ -234,12 +221,7 @@ def find_nearest_valid_position(selected_ship, ships):
     current_center = selected_ship["rect"].center
     nearest_position = min(valid_positions, key=lambda pos: (pos[0] - current_center[0])**2 + (pos[1] - current_center[1])**2)
     return nearest_position
-def check_collision(new_ship_rect, all_ships):
-    #Check if the new ship overlaps with any existing ships
-    for ship in all_ships:
-        if ship["rect"].colliderect(new_ship_rect):
-            return True  #Collision detected
-    return False  #No collision
+
 def start_game(player_ships):
     running = True
 
@@ -267,6 +249,7 @@ def start_game(player_ships):
                     #Check if the click is within the computer grid
                     grid_start_x = width - cols * cells_size - 50
                     grid_start_y = 100
+
                     if grid_start_x <= mouse_x < grid_start_x + cols * cells_size and grid_start_y <= mouse_y < grid_start_y + rows * cells_size:
                         #Calculate grid coordinates
                         col = (mouse_x - grid_start_x) // cells_size
@@ -447,7 +430,6 @@ def rotate_ship(ship):
         ship["rect"].width, ship["rect"].height = ship["rect"].height, ship["rect"].width
     ship["horizontal"] = not ship["horizontal"]
 def handle_shooting(row, col, target_grid, display_x, display_y):
-    #Handles shooting logic for a given grid
     global current_turn
 
     #Get the cell coordinates
@@ -461,38 +443,12 @@ def handle_shooting(row, col, target_grid, display_x, display_y):
     else:
         target_grid[row][col] = "M"  #Mark as miss
 
-    #Draw the result
+    # Draw the result immediately
     pygame.draw.rect(screen, color, pygame.Rect(x, y, cells_size, cells_size))
     pygame.display.update()
 
-    #Switch turns
+    # Switch turn
     current_turn = "computer" if current_turn == "player" else "player"
-def computer_shoot():
-    #Handles the computer's turn to shoot
-    row = random.randint(0, rows - 1)
-    col = random.randint(0, cols - 1)
-
-    while pGameLogic[row][col] in ["H", "M"]:  #Avoid already chosen cells
-        row = random.randint(0, rows - 1)
-        col = random.randint(0, cols - 1)
-
-    handle_shooting(row, col, pGameLogic, 50, 100)  #Player grid position
-def player_turn(event):
-    #Handles the players turn based on mouse click
-    if event.type == pygame.MOUSEBUTTONDOWN and current_turn == "player":
-        x, y = event.pos
-
-        #Check if click is within the opponents grid
-        grid_x_start = width - cols * cells_size - 50
-        grid_y_start = 100
-
-        if grid_x_start <= x < grid_x_start + cols * cells_size and \
-           grid_y_start <= y < grid_y_start + rows * cells_size:
-            col = (x - grid_x_start) // cells_size
-            row = (y - grid_y_start) // cells_size
-
-            if cGameLogic[row][col] not in ["H", "M"]:  #If not already shot
-                handle_shooting(row, col, cGameLogic, grid_x_start, grid_y_start)
 
 #Loading game
 pGameGrid = created_game_grid(rows, cols, cells_size, (50, 50))
