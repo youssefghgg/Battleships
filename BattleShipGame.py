@@ -136,11 +136,7 @@ def singleplayer_setup():
 
     while running:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                return 'quit'
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 if all_ships_placed and start_button and start_button.collidepoint(event.pos):
                     return ships  #Return the player's ship positions
                 for ship in ships:
@@ -494,28 +490,6 @@ def main_menu():
                     return 'quit'
 
         pygame.display.update()
-#Game Loop
-def game_loop():
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        #Draw the background
-        screen.blit(scaled_image, (0, 0))
-
-
-        #Draw the game grid
-        for row in pGameGrid:
-            for cell in row:
-                pygame.draw.rect(screen, BLACK, pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
-
-        for row in cGameGrid:
-            for cell in row:
-                pygame.draw.rect(screen, BLACK, pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
-
-        pygame.display.update()
 
 #Main flow
 clock = pygame.time.Clock()
@@ -533,7 +507,7 @@ while running:
                 start_game(player_ships)
         elif mode_result == 'multiplayer':
             print("Multiplayer mode selected")
-            game_loop()  #Extend this to handle multiplayer
+            player_ships = singleplayer_setup()  # Call singleplayer setup
         elif mode_result == 'back':
             continue  #Return to the main menu
         elif mode_result == 'quit':
