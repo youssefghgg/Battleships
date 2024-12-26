@@ -123,6 +123,7 @@ def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_h
 def singleplayer_setup():
     running = True
 
+
     ships = [
         {"name": "Submarine", "rect": pygame.Rect(600, 100, cells_size * 2, cells_size), "horizontal": True, "dragging": False},
         {"name": "Cruiser", "rect": pygame.Rect(600, 200, cells_size * 3, cells_size), "horizontal": True, "dragging": False},
@@ -136,11 +137,9 @@ def singleplayer_setup():
 
     while running:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                return 'quit'
 
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 if all_ships_placed and start_button and start_button.collidepoint(event.pos):
                     return ships  #Return the player's ship positions
                 for ship in ships:
@@ -182,9 +181,10 @@ def singleplayer_setup():
             100 <= ship["rect"].y < 100 + rows * cells_size
             for ship in ships
         )
+
         screen.blit(scaled_image, (0, 0))
         setup_font = pygame.font.SysFont('Arial', 50)
-        setup_text = setup_font.render("Player 1: Pick Positions", True, WHITE)
+        setup_text = setup_font.render(f"Player {player_count}: Pick Positions", True, WHITE)
         setup_rect = setup_text.get_rect(center=(width // 2, 50))
         screen.blit(setup_text, setup_rect)
         draw_grid_with_labels(50, 100, cells_size, rows, cols)
@@ -195,7 +195,7 @@ def singleplayer_setup():
             screen.blit(label, (ship["rect"].x, ship["rect"].y - 20))
         if all_ships_placed:
             start_button = pygame.Rect(width - 200, height - 100, 150, 50)
-            draw_button("Start", GREEN, start_button)
+            draw_button(f"{start_next}", GREEN, start_button)
         pygame.display.update()
 
 def find_nearest_valid_position(selected_ship, ships):
@@ -222,7 +222,7 @@ def find_nearest_valid_position(selected_ship, ships):
     nearest_position = min(valid_positions, key=lambda pos: (pos[0] - current_center[0])**2 + (pos[1] - current_center[1])**2)
     return nearest_position
 
-def start_game(player_ships):
+def start_game_singleplayer(player_ships):
     running = True
 
     #Generate computer ships randomly
@@ -495,27 +495,28 @@ def main_menu():
 
         pygame.display.update()
 #Game Loop
-def game_loop():
+def start_game_multiplayer(player_ships,player_ships2):
     running = True
+    player1_grid_status = [[None for _ in range(cols)] for _ in
+                            range(rows)]  # Computer grid: None = untouched, 'hit', or 'miss'
+    player2_grid_status = [[None for _ in range(cols)] for _ in
+                          range(rows)]  # Player grid: None = untouched, 'hit', or 'miss'
+
+    # Variable to manage turns
+    player_turn1 = True
+    player_turn2 = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
-        #Draw the background
+                return 'quit'
         screen.blit(scaled_image, (0, 0))
 
 
-        #Draw the game grid
-        for row in pGameGrid:
-            for cell in row:
-                pygame.draw.rect(screen, BLACK, pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
 
-        for row in cGameGrid:
-            for cell in row:
-                pygame.draw.rect(screen, BLACK, pygame.Rect(cell[0], cell[1], cells_size, cells_size), 1)
 
-        pygame.display.update()
+
+
 
 #Main flow
 clock = pygame.time.Clock()
@@ -528,12 +529,25 @@ while running:
         mode_result = game_mode_menu()  #Open gamemode menu
         if mode_result == 'singleplayer':
             print("Singleplayer mode selected")
+            player_count = "1"
+            start_next = "Start"
             player_ships = singleplayer_setup()  #Call singleplayer setup
             if player_ships != 'quit':  #If the user doesnt quit start the game
-                start_game(player_ships)
+                start_game_singleplayer(player_ships)
         elif mode_result == 'multiplayer':
-            print("Multiplayer mode selected")
-            game_loop()  #Extend this to handle multiplayer
+                print("Multiplayer mode selected")
+                player_count = "1"
+                start_next = "Next"
+                player_ships = singleplayer_setup()  # Call singleplayer setup
+                if player_ships != 'quit':  # If the user doesnt quit start the game
+                    player_count = "2"
+                    start_next = "Start"
+                    player_ships2 = singleplayer_setup()
+                    start_game_multiplayer(player_ships,player_ships2)
+
+                    if player_ships2 != 'quit':
+                        pass
+                        #multiplay(player_ships, player_ships2)
         elif mode_result == 'back':
             continue  #Return to the main menu
         elif mode_result == 'quit':
