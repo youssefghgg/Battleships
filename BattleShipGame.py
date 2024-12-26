@@ -540,8 +540,10 @@ while running:
 
                 player_ships = singleplayer_setup()  # Call singleplayer setup
                 if player_ships != 'quit':  # If the user doesnt quit start the game
+
                     player_count = "2"
                     start_next = "Start"
+
                     player_ships2 = singleplayer_setup()
                     start_game_multiplayer(player_ships,player_ships2)
 
