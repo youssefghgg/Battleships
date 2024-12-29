@@ -55,7 +55,7 @@ def up_game_logic(rows, cols):
             row_x.append(" ")
             logic.append(row_x)
     return logic
-def game_mode_menu():
+def game_mode_menu() -> object:
     menu_running = True
     while menu_running:
         #Draw the background first
@@ -217,9 +217,9 @@ def find_nearest_valid_position(selected_ship, ships):
                 if not any(temp_rect.colliderect(ship["rect"]) for ship in ships if ship != selected_ship):
                     valid_positions.append((grid_x, grid_y))
 
-    #Find the closest valid position
+    #Find the closest valid posi]tion
     current_center = selected_ship["rect"].center
-    nearest_position = min(valid_positions, key=lambda pos: (pos[0] - current_center[0])**2 + (pos[1] - current_center[1])**2)
+    nearest_position = min(valid_positions, key=lambda pos: (pos[0] - current_center[0])*2 + (pos[1] - current_center[1])*2)
     return nearest_position
 
 def start_game_singleplayer(player_ships):
@@ -236,10 +236,6 @@ def start_game_singleplayer(player_ships):
     player_turn = True  #Start with the player's turn
 
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                return 'quit'
         screen.blit(scaled_image, (0, 0))
         if player_turn:
             #Handle player shooting
@@ -326,7 +322,7 @@ def start_game_singleplayer(player_ships):
                     continue
                 pygame.draw.rect(screen, color, (grid_start_x_computer + col * cells_size, grid_start_y_computer + row * cells_size, cells_size, cells_size))
 
-                #Player grid
+                #computer grid
                 cell_status = player_grid_status[row][col]
                 if cell_status == 'hit':
                     color = ORANGE  #Orange for hit
@@ -498,10 +494,11 @@ def main_menu():
 def start_game_multiplayer(player_ships,player_ships2):
     running = True
     player1_grid_status = [[None for _ in range(cols)] for _ in
-                            range(rows)]  # Computer grid: None = untouched, 'hit', or 'miss'
+                            range(rows)]  # player 1 grid: None = untouched, 'hit', or 'miss'
     player2_grid_status = [[None for _ in range(cols)] for _ in
-                          range(rows)]  # Player grid: None = untouched, 'hit', or 'miss'
-
+                          range(rows)]  # Player 2 grid: None = untouched, 'hit', or 'miss'
+    draw_grid_with_labels(50, 100, cells_size, rows, cols)  # Player grid
+    draw_grid_with_labels(width - cols * cells_size - 50, 100, cells_size, rows, cols)  # Computer grid
 
     # Variable to manage turns
     player_turn1 = True
@@ -511,7 +508,8 @@ def start_game_multiplayer(player_ships,player_ships2):
             if event.type == pygame.QUIT:
                 running = False
                 return 'quit'
-        screen.blit(scaled_image, (0, 0))
+
+            screen.blit(scaled_image,(0, 0))
 
 
 #Main flow
