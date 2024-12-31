@@ -32,6 +32,7 @@ scaled_image = pygame.transform.scale(background_image,(width,height))
 title_font = pygame.font.SysFont('Comic Sans MS', 70)
 title_text = title_font.render("BattleShips", True, WHITE)
 title_rect = title_text.get_rect(center=(width // 2, 100))
+#background_images = [ pygame.image.load('background1.jpg'), pygame.image.load('background2.jpg'), pygame.image.load('background3.jpg') ]
 
 #Game functions
 def created_game_grid(rows, cols, cells_size, position):
@@ -372,6 +373,14 @@ def generate_computer_ships():
                 placed_ships.append({"name": ship["name"], "rect": rect, "horizontal": orientation == "horizontal"})
                 placed = True
     return placed_ships
+# def settings_menu():
+#     settings_running = True
+#     while settings_running:
+#         for event in pygame.event.get():
+#             if event.type == pygame.QUIT:
+#                 settings_running = False
+#
+#     pygame.display.update()
 def rotate_ship(ship):
     #Rotate the ship between horizontal and vertical
     if ship["horizontal"]:
@@ -504,7 +513,8 @@ while running:
             running = False
 
     elif menu_result == 'settings':
-        print("Settings clicked")
+        pass
+        #open_setteings=settings_menu()
     elif menu_result == 'quit':
         running = False
     #Draw players grid (left) with ships
