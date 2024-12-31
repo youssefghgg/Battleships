@@ -233,14 +233,53 @@ def start_game_singleplayer(player_ships):
     player_grid_status = [[None for _ in range(cols)] for _ in range(rows)]
 
     # Variable to manage turns
-    player_turn = True  # Start with the player's turn
+    player_turn = True
 
     while running:
-        screen.blit(scaled_image, (0, 0))
-        if player_turn:
-            player_turn = handle_player_turn(computer_ships, computer_grid_status)
-        else:
+        # Handle all events first
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:  # Pause the game
+                    show_pause_menu()
+                elif event.key == pygame.K_q:  # Quit the game
+                    running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and player_turn:
+                # Handle player's mouse click during their turn
+                mouse_x, mouse_y = event.pos
+                grid_start_x = width - cols * cells_size - 50
+                grid_start_y = 100
+                if grid_start_x <= mouse_x < grid_start_x + cols * cells_size and grid_start_y <= mouse_y < grid_start_y + rows * cells_size:
+                    col = (mouse_x - grid_start_x) // cells_size
+                    row = (mouse_y - grid_start_y) // cells_size
+                    if computer_grid_status[row][col] is None:  # If untouched
+                        hit = False
+                        for ship in computer_ships:
+                            if ship["rect"].collidepoint(
+                                grid_start_x + col * cells_size + cells_size // 2,
+                                grid_start_y + row * cells_size + cells_size // 2
+                            ):
+                                screen.blit(scaled_image, (0, 0))
+                                computer_grid_status[row][col] = 'hit'
+                                hit = True
+                                break
+                        if not hit:
+                            computer_grid_status[row][col] = 'miss'
+                            screen.blit(scaled_image, (0, 0))
+
+                        # Switch to computer's turn after handling the shot
+                        player_turn = False
+
+        # Update game state
+        if not player_turn:
+            # Handle computer's turn
             player_turn = handle_computer_turn(player_grid_status)
+            screen.blit(scaled_image, (0, 0))
+
+        # Draw game state
+        screen.blit(scaled_image, (0, 0))
         draw_game_state(player_ships, computer_grid_status, player_grid_status, player_turn, computer_ships, debug_mode)
         pygame.display.update()
 def handle_player_turn(computer_ships, computer_grid_status):
@@ -390,6 +429,7 @@ def rotate_ship(ship):
     ship["horizontal"] = not ship["horizontal"]
 def handle_shooting(row, col, target_grid, grid_start_x, grid_start_y):
     global current_turn
+    print(f"Computer shot: row={row}, col={col}, result={target_grid[row][col]}")
 
     # Determine if it's a hit or miss
     if target_grid[row][col] == "S":  # Assume "S" means a ship is present
@@ -450,6 +490,29 @@ def main_menu():
                     return 'quit'
 
         pygame.display.update()
+def show_pause_menu():
+    paused = True
+    font = pygame.font.SysFont('Arial', 30)
+    resume_text = font.render("Game Paused - Press ESC to Resume or Q to Quit", True, WHITE)
+    resume_rect = resume_text.get_rect(center=(width // 2, height // 2))
+
+    while paused:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:  # Resume on ESC
+                    paused = False
+                elif event.key == pygame.K_q:  # Quit on Q
+                    pygame.quit()
+                    exit()
+
+        # Display the pause menu
+        screen.fill(BLACK)
+        screen.blit(resume_text, resume_rect)
+        pygame.display.update()
+
 #Game Loop
 def start_game_multiplayer(player_ships,player_ships2):
     running = True
@@ -475,56 +538,50 @@ def start_game_multiplayer(player_ships,player_ships2):
 #Main flow
 clock = pygame.time.Clock()
 running = True
+
 while running:
     clock.tick(60)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:  # Pause on ESC
+                show_pause_menu()
+            elif event.key == pygame.K_q:  # Quit on Q
+                running = False
+
     menu_result = main_menu()
     if menu_result == 'start':
-        mode_result = game_mode_menu()  #Open gamemode menu
+        mode_result = game_mode_menu()  # Open game mode menu
         if mode_result == 'singleplayer':
             print("Singleplayer mode selected")
-
             player_count = "1"
             start_next = "Start"
-
-            player_ships = singleplayer_setup()  #Call singleplayer setup
-            if player_ships != 'quit':  #If the user doesnt quit start the game
+            player_ships = singleplayer_setup()
+            if player_ships != 'quit':
                 start_game_singleplayer(player_ships)
         elif mode_result == 'multiplayer':
-                print("Multiplayer mode selected")
-
-                player_count = "1"
-                start_next = "Next"
-
-                player_ships = singleplayer_setup()  # Call singleplayer setup
-                if player_ships != 'quit':  # If the user doesnt quit start the game
-
-                    player_count = "2"
-                    start_next = "Start"
-
-                    player_ships2 = singleplayer_setup()
-                    start_game_multiplayer(player_ships,player_ships2)
-
-                    if player_ships2 != 'quit':
-                        pass
-                        #multiplay(player_ships, player_ships2)
+            print("Multiplayer mode selected")
+            player_count = "1"
+            start_next = "Next"
+            player_ships = singleplayer_setup()  # Call singleplayer setup
+            if player_ships != 'quit':  # If the user doesnt quit start the game
+                player_count = "2"
+                start_next = "Start"
+                player_ships2 = singleplayer_setup()
+                start_game_multiplayer(player_ships, player_ships2)
+                if player_ships2 != 'quit':
+                    pass
+                    # multiplay(player_ships, player_ships2)
         elif mode_result == 'back':
-            continue  #Return to the main menu
+            continue  # Return to the main menu
         elif mode_result == 'quit':
             running = False
-
-    elif menu_result == 'settings':
-        pass
-        #open_setteings=settings_menu()
     elif menu_result == 'quit':
         running = False
-    #Draw players grid (left) with ships
-    draw_grid_with_labels(50, 100, cells_size, rows, cols)
+    elif menu_result == 'settings':
+        pass  # Add settings handling if needed
 
-    #Draw opponents grid (right)
-    draw_grid_with_labels(width - cols * cells_size - 50, 100, cells_size, rows, cols)
-    #R-G-B
-    screen.blit(scaled_image, (0, 0))
-    screen.blit(title_text, title_rect)
     pygame.display.update()
 
 pygame.quit()
