@@ -26,6 +26,7 @@ GREEN = (0, 255, 0)
 ORANGE = (255, 165, 0)
 PURPLE = (128, 0, 128)
 RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
 
 #Title and icon
 pygame.display.set_caption("Battleships")
@@ -576,14 +577,7 @@ def generate_computer_ships():
                 placed = True
     return placed_ships
 
-# def settings_menu():
-#     settings_running = True
-#     while settings_running:
-#         for event in pygame.event.get():
-#             if event.type == pygame.QUIT:
-#                 settings_running = False
-#
-#     pygame.display.update()
+    pygame.display.update()
 def rotate_ship(ship):
     #Rotate the ship between horizontal and vertical
     if ship["horizontal"]:
@@ -654,11 +648,13 @@ def main_menu():
         #Define button rectangles
         start_button = pygame.Rect(width // 2 - 100, 200, 200, 50)
         settings_button = pygame.Rect(width // 2 - 100, 300, 200, 50)
-        quit_button = pygame.Rect(width // 2 - 100, 400, 200, 50)
+        credits_button = pygame.Rect(width // 2 - 100, 400, 200, 50)
+        quit_button = pygame.Rect(width // 2 - 100, 500, 200, 50)
 
         #Draw buttons
         draw_button("Start Game", GREEN, start_button)
-        draw_button("Settings", (255, 255, 0), settings_button)
+        draw_button("Settings", YELLOW, settings_button)
+        draw_button("Credits" , YELLOW , credits_button)
         draw_button("Quit", RED, quit_button)
 
         #Check for events
@@ -671,6 +667,8 @@ def main_menu():
                     return 'start'
                 elif settings_button.collidepoint(event.pos):
                     return 'settings'
+                elif credits_button.collidepoint(event.pos):
+                    return 'credits'
                 elif quit_button.collidepoint(event.pos):
                     return 'quit'
 
@@ -696,6 +694,61 @@ def show_pause_menu():
         # Display the pause menu
         screen.fill(BLACK)
         screen.blit(resume_text, resume_rect)
+        pygame.display.update()
+def credit_menu():
+    # Flag to keep the credits menu running
+    credits_running = True
+
+    # Font setup
+    title_font = pygame.font.SysFont('Arial', 50)
+    name_font = pygame.font.SysFont('Arial', 30)
+
+    # Credits data
+    credits = [
+        {"name": "Youssef Ahmed", "role": "Lead Programmer and Project Manager"},
+        {"name": "Marwan Waleed", "role": "Best contributor"},
+        {"name": "Zeyad", "role": "Graphics Designer"},
+        {"name": "Hassan", "role": "Debugger and File control"},
+        {"name": "Ammar", "role": "Audio and Sound Manager"},
+    ]
+
+    while credits_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:  # Go back to the main menu on ESC
+                    credits_running = False
+
+        # Draw the background
+        screen.blit(scaled_image, (0, 0))
+
+        # Draw title
+        title_text = title_font.render("Credits", True, WHITE)
+        title_rect = title_text.get_rect(center=(width // 2, 100))
+        screen.blit(title_text, title_rect)
+
+        # Display each person's name and role
+        start_y = 200  # Starting y-coordinate for names
+        spacing = 60   # Spacing between each name and role
+        for credit in credits:
+            name_text = name_font.render(f"{credit['name']}", True, BLACK)
+            role_text = name_font.render(f"{credit['role']}", True, (191, 64, 191) )
+
+            name_rect = name_text.get_rect(center=(width // 2, start_y))
+            role_rect = role_text.get_rect(center=(width // 2, start_y + 30))
+
+            screen.blit(name_text, name_rect)
+            screen.blit(role_text, role_rect)
+
+            start_y += spacing
+
+        # Instruction to go back
+        back_text = name_font.render("Press ESC to return to the Main Menu", True, PURPLE)
+        back_rect = back_text.get_rect(center=(width // 2, height - 50))
+        screen.blit(back_text, back_rect)
+
         pygame.display.update()
 
 
@@ -748,8 +801,11 @@ while running:
             running = False
     elif menu_result == 'quit':
         running = False
-    elif menu_result == 'settings':
+    # elif menu_result == 'settings':
         pass  # Add settings handling if needed
+    elif menu_result == 'credits':
+        credit_menu()
+        
     pygame.display.update()
 
 pygame.quit()
