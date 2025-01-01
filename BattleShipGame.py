@@ -43,6 +43,11 @@ title_rect = title_text.get_rect(center=(width // 2, 100))
 log_filename = datetime.datetime.now().strftime("Game_Log_%Y-%m-%d_%H-%M.txt")
 log_file = open(log_filename, "w")
 
+# The Sound effects
+sound_hit = pygame.mixer.Sound("Hitdamage.wav")
+sound_miss = pygame.mixer.Sound("miss.wav")
+sound_destroyed = pygame.mixer.Sound("Shipdestroyed.wav")
+sound_win = pygame.mixer.Sound("explosionwin.wav")
 
 def check_saved_game(player_name):
     """
@@ -720,6 +725,7 @@ def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y):
             target_grid[row][col] = "hit"
             log_action("Comp", "Attack", (row, col), "Hit")
             ship["hits"] += 1
+            sound_hit.play()
             if ship["hits"] >= ship["size"]:  # Check if the ship is sunk
                 ship["status"] = "sunk"
                 print(f"{ship['name']} is sunk!")  # Debug message
@@ -728,6 +734,7 @@ def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y):
     # If no ship is hit, mark as miss
     target_grid[row][col] = "miss"
     log_action("Player", "Attack", (row, col), "Miss")
+    sound_miss.play()
     return False
 
 
@@ -751,6 +758,7 @@ def display_game_over(message):
     screen.blit(scaled_image, (0, 0))
     screen.blit(text, text.get_rect(center=(width // 2, height // 2)))
     pygame.display.update()
+    sound_win.play()
     finalize_logs()
     time.sleep(3)
     pygame.quit()
