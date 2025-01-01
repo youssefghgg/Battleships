@@ -44,6 +44,60 @@ log_filename = datetime.datetime.now().strftime("Game_Log_%Y-%m-%d_%H-%M.txt")
 log_file = open(log_filename, "w")
 
 
+def check_saved_game(player_name):
+    """
+    Check if a saved game file exists for the given player name.
+    If it exists and is non-empty, prompt the user to continue or start a new game.
+    """
+    file_name = f"{player_name}.txt"
+
+    try:
+        # Try to open the file in read mode
+        with open(file_name, 'r') as file:
+            # Check if the file is non-empty
+            file.seek(0, 2)  # Move the cursor to the end of the file
+            if file.tell() > 0:  # Check if the file has content
+                choice = input("A saved game was found. Do you want to continue? (yes/no): ").strip().lower()
+                if choice == "yes":
+                    return load_game_state(file_name)  # Load game state
+                elif choice == "no":
+                    # Start a new game by clearing the file
+                    with open(file_name, 'w') as clear_file:
+                        clear_file.truncate(0)
+                    print("Starting a new game...")
+                    return initialize_new_game()
+                else:
+                    print("Invalid choice. Starting a new game...")
+                    return initialize_new_game()
+            else:
+                print("File is empty. Starting a new game...")
+                return initialize_new_game()
+    except FileNotFoundError:
+        # If the file does not exist, start a new game
+        print("No saved game found. Starting a new game...")
+        return initialize_new_game()
+
+
+def load_game_state(file_name):
+    """
+    Load the saved game state from the file.
+    """
+    with open(file_name, 'r') as file:
+        game_data = file.read()
+        print("Game data loaded successfully.")
+        # Parse the game state (replace with your own logic)
+        return game_data
+
+
+def initialize_new_game():
+    """
+    Initialize a new game with empty grids for the player and computer.
+    """
+    player_grid = [[None] * 10 for _ in range(10)]  # Replace 10 with the grid size
+    computer_grid = [[None] * 10 for _ in range(10)]
+    return player_grid, computer_grid
+
+
 # Game functions
 def log_action(actor, action, position, result=None):
     log_entry = {
@@ -530,6 +584,7 @@ def handle_player_turn(computer_ships, computer_grid_status):
                     pygame.draw.rect(screen, color, (
                         grid_start_x + col * cells_size, grid_start_y + row * cells_size, cells_size, cells_size
                     ))
+                    log_action(log_file, "Player", row, col, computer_grid_status[row][col])  # Log the player's action
                     return False  # Switch to computer's turn
     return True  # Stay on player's turn
 
@@ -546,7 +601,10 @@ def handle_computer_turn(player_grid_status, player_ships):
         col = random.randint(0, cols - 1)
         if player_grid_status[row][col] is None:  # If untouched
             handle_shooting(row, col, player_ships, player_grid_status, 50, 100)  # Pass player_ships
+            log_action(log_file, "Computer", row, col, player_grid_status[row][col])
+
             break
+
 
     return True  # Switch back to player's turn
 
