@@ -13,7 +13,7 @@ rows = 10
 cols = 10
 cells_size = 33
 current_turn = "player"
-debug_mode = False   # True for showing comp ships, False for playing the game normally
+debug_mode = True   # True for showing comp ships, False for playing the game normally
 target_stack = []  # Stores cells to check around a hit
 current_direction = None  # Direction of exploration after detecting a ship
 ship_orientation = None  # Orientation of the ship (horizontal or vertical)
@@ -55,7 +55,6 @@ def start_game_multiplayer(player_ships, player_ships2):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = event.pos
 
-
                 grid_start_x = width - cols * cells_size - 50
                 grid_start_y = 100
 
@@ -85,17 +84,10 @@ def start_game_multiplayer(player_ships, player_ships2):
 
         screen.blit(scaled_image, (0, 0))
 
-        draw_grid_with_labels(50, 100, cells_size, rows, cols)  # Left grid (player ships)
-        draw_grid_with_labels(width - cols * cells_size - 50, 100, cells_size, rows, cols)  # Right grid (shared)
-
         if player_turn == 1:
-            for ship in player_ships:
-                pygame.draw.rect(screen, GREEN, ship["rect"])
-            draw_grid_status(player1_shots, width - cols * cells_size - 50, 100)  # Player 1's shots on right grid
+            draw_game_state(player_ships, player2_shots, player1_shots, player_turn)
         else:
-            for ship in player_ships2:
-                pygame.draw.rect(screen, GREEN, ship["rect"])
-            draw_grid_status(player2_shots, width - cols * cells_size - 50, 100)  # Player 2's shots on right grid
+            draw_game_state(player_ships2, player1_shots, player2_shots, player_turn)
 
         font = pygame.font.SysFont('Arial', 30)
         message = f"Player {player_turn}'s Turn: Shoot on the right grid!"
@@ -103,6 +95,9 @@ def start_game_multiplayer(player_ships, player_ships2):
         screen.blit(message_surface, (width // 2 - message_surface.get_width() // 2, 10))
 
         pygame.display.update()
+
+
+
 def start_game_singleplayer(player_ships, difficulty="easy"):
     running = True
 
@@ -706,7 +701,7 @@ def credit_menu():
     # Credits data
     credits = [
         {"name": "Youssef Ahmed", "role": "Lead Programmer and Project Manager"},
-        {"name": "Marwan Waleed", "role": "Best contributor"},
+        {"name": "Marwan Walid", "role": "Best contributor"},
         {"name": "Zeyad", "role": "Graphics Designer"},
         {"name": "Hassan", "role": "Debugger and File control"},
         {"name": "Ammar", "role": "Audio and Sound Manager"},
