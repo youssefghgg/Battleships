@@ -16,7 +16,7 @@ rows = 10
 cols = 10
 cells_size = 33
 current_turn = "player"
-debug_mode = True  # True for showing comp ships, False for playing the game normally
+debug_mode = False # True for showing comp ships, False for playing the game normally
 target_stack = []  # Stores cells to check around a hit
 current_direction = None  # Direction of exploration after detecting a ship
 ship_orientation = None  # Orientation of the ship (horizontal or vertical)
@@ -35,7 +35,8 @@ ORANGE = (255, 165, 0)
 PURPLE = (128, 0, 128)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
-USERNAME_COLOR = (176, 38, 255)  # Update typing color
+
+GREY = (128, 128, 128)# Update typing color
 
 # Title and icon
 pygame.display.set_caption("Battleships")
@@ -276,13 +277,13 @@ def singleplayer_setup():
         screen.blit(setup_text, setup_rect)
         draw_grid_with_labels(50, 100, cells_size, rows, cols)
         for ship in ships:
-            pygame.draw.rect(screen, GREEN, ship["rect"])
+            pygame.draw.rect(screen, GREY, ship["rect"])
             font = pygame.font.SysFont('Arial', 20)
             label = font.render(ship["name"], True, WHITE)
             screen.blit(label, (ship["rect"].x, ship["rect"].y - 20))
         if all_ships_placed:
             start_button = pygame.Rect(width - 200, height - 100, 150, 50)
-            draw_button(f"Start", GREEN, start_button)
+            draw_button(f"Start", GREY, start_button)
         pygame.display.update()
 def rotate_ship(ship):
     # Rotate the ship between horizontal and vertical
@@ -371,7 +372,7 @@ def handle_player_turn(computer_ships, computer_grid_status):
                         computer_grid_status[row][col] = 'miss'
                         log_action("Player", "Attack", (row, col), "Miss")
 
-                    color = ORANGE if computer_grid_status[row][col] == 'hit' else PURPLE
+                    color = RED if computer_grid_status[row][col] == 'hit' else PURPLE
                     pygame.draw.rect(screen, color, (
                         grid_start_x + col * cells_size, grid_start_y + row * cells_size, cells_size, cells_size
                     ))
@@ -420,11 +421,11 @@ def all_ships_sunk(ships):
 
 # Files-maro
 def input_username_screen():
-    """Displays a screen for username input directly in the game window."""
+
     input_running = True
     username = ""
 
-    instruction_text = font.render("Input Username:", True, USERNAME_COLOR)
+    instruction_text = font.render("Enter Username:", True, GREEN)
 
     while input_running:
         for event in pygame.event.get():
@@ -441,23 +442,23 @@ def input_username_screen():
                     username += event.unicode  # Add typed character
 
         screen.blit(scaled_image, (0, 0))
-        instruction_rect = instruction_text.get_rect(center=(width // 2, height // 2 - 100))
+        instruction_rect = instruction_text.get_rect(center=(width // 2, height // 2 - 200))
         screen.blit(instruction_text, instruction_rect)
 
         # Draw typed username
-        username_surface = font.render(username, True, USERNAME_COLOR)
-        username_rect = username_surface.get_rect(center=(width // 2, height // 2))
+        username_surface = font.render(username, True, BLACK)
+        username_rect = username_surface.get_rect(center=(width // 2, height // 2-100))
         screen.blit(username_surface, username_rect)
 
         pygame.display.update()
 
     return username
 def save_game(player_name, game_state):
-    """Save the current game state to a file."""
+
     with open(f"{player_name}.txt", "w") as file:
         json.dump(game_state, file)
 def load_game(player_name):
-    """Load the game state from a file if it exists."""
+
     file_name = f"{player_name}.txt"
     if os.path.exists(file_name):
         with open(file_name, "r") as file:
@@ -494,7 +495,7 @@ def draw_grid_status(grid_status, grid_start_x, grid_start_y):
         for col in range(cols):
             cell_status = grid_status[row][col]
             if cell_status == 'hit':
-                color = ORANGE  # Orange for hit
+                color = RED  # Orange for hit
             elif cell_status == 'miss':
                 color = PURPLE  # Purple for miss
             else:
@@ -509,12 +510,12 @@ def draw_game_state(player_ships, computer_grid_status, player_grid_status, play
 
     # Draw player ships
     for ship in player_ships:
-        pygame.draw.rect(screen, GREEN, ship["rect"])
+        pygame.draw.rect(screen, GREY, ship["rect"])
 
     # Draw computer ships if debug mode is enabled
     if debug_mode and computer_ships:
         for ship in computer_ships:
-            pygame.draw.rect(screen, RED, ship["rect"])
+            pygame.draw.rect(screen, GREY, ship["rect"])
 
     # Draw grid statuses
     draw_grid_status(computer_grid_status, width - cols * cells_size - 50, 100)  # Computer grid
@@ -634,16 +635,15 @@ def main_menu():
         screen.blit(title_text, title_rect)
 
         # Define button rectangles
-        start_button = pygame.Rect(width // 2 - 100, 200, 200, 50)
-        settings_button = pygame.Rect(width // 2 - 100, 300, 200, 50)
-        credits_button = pygame.Rect(width // 2 - 100, 400, 200, 50)
-        quit_button = pygame.Rect(width // 2 - 100, 500, 200, 50)
+        start_button = pygame.Rect(width // 2 - 80, 200, 150, 50)
+        credits_button = pygame.Rect(width // 2 - 80, 300, 150, 50)
+        quit_button = pygame.Rect(width // 2 - 80, 400, 150, 50)
 
         # Draw buttons
-        draw_button("Start Game", GREEN, start_button)
-        draw_button("Settings", YELLOW, settings_button)
-        draw_button("Credits", YELLOW, credits_button)
-        draw_button("Quit", RED, quit_button)
+        draw_button("  Start", WHITE, start_button)
+
+        draw_button("Credits", WHITE, credits_button)
+        draw_button("  Quit", WHITE, quit_button)
 
         # Check for events
         for event in pygame.event.get():
@@ -653,8 +653,7 @@ def main_menu():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.collidepoint(event.pos):
                     return 'start'
-                elif settings_button.collidepoint(event.pos):
-                    return 'settings'
+
                 elif credits_button.collidepoint(event.pos):
                     return 'credits'
                 elif quit_button.collidepoint(event.pos):
@@ -693,11 +692,11 @@ def credit_menu():
 
     # Credits data
     credits = [
-        {"name": "Youssef Ahmed", "role": "Lead Programmer and Project Manager"},
-        {"name": "Marwan Walid", "role": "Project Planner"},
-        {"name": "Zeyad", "role": "Graphics Designer"},
-        {"name": "Hassan", "role": "Debugger and File control"},
-        {"name": "Ammar", "role": "Audio and Sound Manager"},
+        {"name": "Youssef ", "role": "Project Manager & Game modes"},
+        {"name": "Marwan", "role": "File Control & Project planner"},
+        {"name": "Zeyad", "role": "Setup & Graphic design"},
+        {"name": "Hassan", "role": "Debugger & Grid Control"},
+        {"name": "Ammar", "role": "Audio & Sound Manager"},
     ]
 
     while credits_running:
@@ -790,8 +789,7 @@ while running:
 
     elif menu_result == 'quit':
         running = False
-        # elif menu_result == 'settings':
-        pass  # Add settings handling if needed
+
     elif menu_result == 'credits':
         credit_menu()
 
