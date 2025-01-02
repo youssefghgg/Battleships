@@ -732,7 +732,7 @@ def credit_menu():
             start_y += spacing
 
         # Instruction to go back
-        back_text = name_font.render("Press ESC to return to the Main Menu", True, PURPLE)
+        back_text = name_font.render("Press ESC to return to the Main Menu", True,BLACK)
         back_rect = back_text.get_rect(center=(width // 2, height - 50))
         screen.blit(back_text, back_rect)
 
