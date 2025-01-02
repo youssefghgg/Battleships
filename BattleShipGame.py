@@ -1,11 +1,14 @@
 import pygame
 import random
 import time
+import datetime
+import os
+import json
 
-#Initialize pygame
+# Initialize pygame
 pygame.init()
 
-#Create the screen
+# Create the screen
 width = 800
 height = 600
 screen = pygame.display.set_mode((width, height))
@@ -13,13 +16,16 @@ rows = 10
 cols = 10
 cells_size = 33
 current_turn = "player"
-debug_mode = False   # True for showing comp ships, False for playing the game normally
+debug_mode = False  # True for showing comp ships, False for playing the game normally
 target_stack = []  # Stores cells to check around a hit
 current_direction = None  # Direction of exploration after detecting a ship
 ship_orientation = None  # Orientation of the ship (horizontal or vertical)
 current_ship_cells = []  # Tracks cells of the current target ship
+movement_logs = []
+# Fonts
+font = pygame.font.SysFont('Arial', 50)
 
-#Colors
+# Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
@@ -27,19 +33,51 @@ ORANGE = (255, 165, 0)
 PURPLE = (128, 0, 128)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+USERNAME_COLOR = (176, 38, 255)  # Update typing color
 
-#Title and icon
+# Title and icon
 pygame.display.set_caption("Battleships")
-icon = pygame.image.load('ship.png')  #Ensure this file exists
+icon = pygame.image.load('ship.png')  # Ensure this file exists
 pygame.display.set_icon(icon)
 background_image = pygame.image.load('background.jpeg')
-scaled_image = pygame.transform.scale(background_image,(width,height))
+scaled_image = pygame.transform.scale(background_image, (width, height))
 title_font = pygame.font.SysFont('Comic Sans MS', 70)
 title_text = title_font.render("BattleShips", True, WHITE)
 title_rect = title_text.get_rect(center=(width // 2, 100))
-#background_images = [ pygame.image.load('background1.jpg'), pygame.image.load('background2.jpg'), pygame.image.load('background3.jpg') ]
+# background_images = [ pygame.image.load('background1.jpg'), pygame.image.load('background2.jpg'), pygame.image.load('background3.jpg') ]
+log_filename = datetime.datetime.now().strftime("Game_Log_%Y-%m-%d_%H-%M.txt")
+log_file = open(log_filename, "w")
 
-#Game functions
+
+# Game functions
+def log_action(actor, action, position, result=None):
+    log_entry = {
+        "actor": actor,
+        "action": action,
+        "position": position,
+        "result": result
+    }
+    movement_logs.append(log_entry)
+
+    # Format log entry for writing
+    log_text = f"{actor} performed {action} at position {position}"
+    if result:
+        log_text += f" with result: {result}"
+    log_text += "\n"
+
+    log_file.write(log_text)
+    log_file.flush()  # Ensure it's written immediately
+    print(log_text, end="")
+
+
+def finalize_logs():
+    log_file.write("\n--- Full Movement Logs ---\n")
+    for log in movement_logs:
+        log_file.write(f"{log}\n")
+    log_file.close()
+    print(f"Logs saved to {log_filename}")
+
+
 def start_game_multiplayer(player_ships, player_ships2):
     running = True
     player1_shots = [[None for _ in range(cols)] for _ in range(rows)]
@@ -54,7 +92,6 @@ def start_game_multiplayer(player_ships, player_ships2):
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = event.pos
-
 
                 grid_start_x = width - cols * cells_size - 50
                 grid_start_y = 100
@@ -103,6 +140,8 @@ def start_game_multiplayer(player_ships, player_ships2):
         screen.blit(message_surface, (width // 2 - message_surface.get_width() // 2, 10))
 
         pygame.display.update()
+
+
 def start_game_singleplayer(player_ships, difficulty="easy"):
     running = True
 
@@ -136,7 +175,7 @@ def start_game_singleplayer(player_ships, difficulty="easy"):
                     col = (mouse_x - grid_start_x) // cells_size
                     row = (mouse_y - grid_start_y) // cells_size
                     if computer_grid_status[row][col] is None:  # If untouched
-                        handle_shooting(row, col, computer_ships, computer_grid_status, grid_start_x, grid_start_y)
+                        handle_shooting(row, col, computer_ships, computer_grid_status, grid_start_x, grid_start_y, shooter="player")
                         player_turn = False  # Switch to computer's turn
                         screen.blit(scaled_image, (0, 0))
 
@@ -165,6 +204,8 @@ def start_game_singleplayer(player_ships, difficulty="easy"):
         screen.blit(scaled_image, (0, 0))
         draw_game_state(player_ships, computer_grid_status, player_grid_status, player_turn, computer_ships, debug_mode)
         pygame.display.update()
+
+
 def singleplayer_hardmode(player_grid_status, player_ships):
     global target_stack, current_direction, ship_orientation, current_ship_cells
 
@@ -253,6 +294,8 @@ def singleplayer_hardmode(player_grid_status, player_ships):
             break
 
     return True  # Return control to the player
+
+
 def created_game_grid(rows, cols, cells_size, position):
     start_x = position[0]
     start_y = position[1]
@@ -266,8 +309,10 @@ def created_game_grid(rows, cols, cells_size, position):
         start_x = position[0]
         start_y += cells_size
     return grid
+
+
 def up_game_logic(rows, cols):
-    #Updates game grid space and x with ships
+    # Updates game grid space and x with ships
     logic = []
     for row in range(rows):
         row_x = []
@@ -275,30 +320,34 @@ def up_game_logic(rows, cols):
             row_x.append(" ")
             logic.append(row_x)
     return logic
+
+
 def draw_grid_with_labels(x_start, y_start, cell_size, rows, cols):
-    #Draw the grid
+    # Draw the grid
     for row in range(rows):
         for col in range(cols):
             x = x_start + col * cell_size
             y = y_start + row * cell_size
             pygame.draw.rect(screen, WHITE, pygame.Rect(x, y, cell_size, cell_size), 1)
 
-    #Draw row labels (A-J)
+    # Draw row labels (A-J)
     font = pygame.font.SysFont('Arial', 30)
     for i in range(rows):
         label = font.render(chr(65 + i), True, WHITE)  # A=65 in ASCII
         screen.blit(label, (x_start - 30, y_start + i * cell_size + 10))
 
-    #Draw column labels (1-10)
+    # Draw column labels (1-10)
     for j in range(cols):
         label = font.render(str(j + 1), True, WHITE)
         screen.blit(label, (x_start + j * cell_size + 15, y_start - 30))
+
+
 def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_height, ship_width, ship_height):
-    #Snap the ship to the nearest valid grid cell
+    # Snap the ship to the nearest valid grid cell
     snapped_x = round((x - grid_start_x) / cell_size) * cell_size + grid_start_x
     snapped_y = round((y - grid_start_y) / cell_size) * cell_size + grid_start_y
 
-    #Ensure the ship stays within the grid boundaries
+    # Ensure the ship stays within the grid boundaries
     if snapped_x + ship_width > grid_start_x + grid_width:
         snapped_x = grid_start_x + grid_width - ship_width
     if snapped_y + ship_height > grid_start_y + grid_height:
@@ -309,24 +358,26 @@ def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_h
         snapped_y = grid_start_y
 
     return snapped_x, snapped_y
+
+
 def game_mode_menu() -> object:
     menu_running = True
     while menu_running:
-        #Draw the background first
+        # Draw the background first
         screen.blit(scaled_image, (0, 0))
         screen.blit(title_text, title_rect)
 
-        #Define button rectangles
+        # Define button rectangles
         singleplayer_button = pygame.Rect(width // 2 - 150, 200, 300, 50)
         multiplayer_button = pygame.Rect(width // 2 - 150, 300, 300, 50)
         back_button = pygame.Rect(width // 2 - 150, 400, 300, 50)
 
-        #Draw buttons
+        # Draw buttons
         draw_button("Singleplayer", (0, 255, 0), singleplayer_button)
         draw_button("Multiplayer", (0, 255, 255), multiplayer_button)
         draw_button("Back", (255, 0, 0), back_button)
 
-        #Check for events
+        # Check for events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 menu_running = False
@@ -340,6 +391,8 @@ def game_mode_menu() -> object:
                     return 'back'
 
         pygame.display.update()
+
+
 def singleplayer_setup():
     running = True
 
@@ -363,10 +416,9 @@ def singleplayer_setup():
     while running:
         for event in pygame.event.get():
 
-
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if all_ships_placed and start_button and start_button.collidepoint(event.pos):
-                    return ships  #Return the player's ship positions
+                    return ships  # Return the player's ship positions
                 for ship in ships:
                     if ship["rect"].collidepoint(event.pos):
                         ship["dragging"] = True
@@ -376,21 +428,21 @@ def singleplayer_setup():
             elif event.type == pygame.MOUSEBUTTONUP:
                 if selected_ship:
                     selected_ship["dragging"] = False
-                    #Snap to grid with boundary checks
+                    # Snap to grid with boundary checks
                     snapped_x, snapped_y = snap_to_grid(
                         selected_ship["rect"].x,
                         selected_ship["rect"].y,
-                        50,  #Grid start x
-                        100,  #Grid start y
-                        cells_size,  #Cell size
-                        cols * cells_size,  #Grid width
-                        rows * cells_size,  #Grid height
-                        selected_ship["rect"].width,  #Ship width
-                        selected_ship["rect"].height,  #Ship height
+                        50,  # Grid start x
+                        100,  # Grid start y
+                        cells_size,  # Cell size
+                        cols * cells_size,  # Grid width
+                        rows * cells_size,  # Grid height
+                        selected_ship["rect"].width,  # Ship width
+                        selected_ship["rect"].height,  # Ship height
                     )
-                    #Set snapped position
+                    # Set snapped position
                     selected_ship["rect"].x, selected_ship["rect"].y = snapped_x, snapped_y
-                    #Check for overlap and resolve it
+                    # Check for overlap and resolve it
                     if any(ship != selected_ship and selected_ship["rect"].colliderect(ship["rect"]) for ship in ships):
                         nearest_x, nearest_y = find_nearest_valid_position(selected_ship, ships)
                         selected_ship["rect"].x, selected_ship["rect"].y = nearest_x, nearest_y
@@ -422,6 +474,8 @@ def singleplayer_setup():
             start_button = pygame.Rect(width - 200, height - 100, 150, 50)
             draw_button(f"{start_next}", GREEN, start_button)
         pygame.display.update()
+
+
 def find_nearest_valid_position(selected_ship, ships):
     valid_positions = []
 
@@ -430,21 +484,24 @@ def find_nearest_valid_position(selected_ship, ships):
             grid_x = 50 + col * cells_size
             grid_y = 100 + row * cells_size
 
-            #Ensure the ship fits within the grid boundaries
+            # Ensure the ship fits within the grid boundaries
             if grid_x + selected_ship["rect"].width <= 50 + cols * cells_size and \
-               grid_y + selected_ship["rect"].height <= 100 + rows * cells_size:
+                    grid_y + selected_ship["rect"].height <= 100 + rows * cells_size:
 
-                #Create a temp rect for collision checking
+                # Create a temp rect for collision checking
                 temp_rect = pygame.Rect(grid_x, grid_y, selected_ship["rect"].width, selected_ship["rect"].height)
 
-                #Ensure no overlap with other ships
+                # Ensure no overlap with other ships
                 if not any(temp_rect.colliderect(ship["rect"]) for ship in ships if ship != selected_ship):
                     valid_positions.append((grid_x, grid_y))
 
-    #Find the closest valid posi]tion
+    # Find the closest valid posi]tion
     current_center = selected_ship["rect"].center
-    nearest_position = min(valid_positions, key=lambda pos: (pos[0] - current_center[0])*2 + (pos[1] - current_center[1])*2)
+    nearest_position = min(valid_positions,
+                           key=lambda pos: (pos[0] - current_center[0]) * 2 + (pos[1] - current_center[1]) * 2)
     return nearest_position
+
+
 def handle_player_turn(computer_ships, computer_grid_status):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -467,10 +524,12 @@ def handle_player_turn(computer_ships, computer_grid_status):
                                 grid_start_y + row * cells_size + cells_size // 2
                         ):
                             computer_grid_status[row][col] = 'hit'
+                            log_action("Player", "Attack", (row, col), "Hit")
                             hit = True
                             break
                     if not hit:
                         computer_grid_status[row][col] = 'miss'
+                        log_action("Player", "Attack", (row, col), "Miss")
 
                     color = ORANGE if computer_grid_status[row][col] == 'hit' else PURPLE
                     pygame.draw.rect(screen, color, (
@@ -478,6 +537,8 @@ def handle_player_turn(computer_ships, computer_grid_status):
                     ))
                     return False  # Switch to computer's turn
     return True  # Stay on player's turn
+
+
 def handle_computer_turn(player_grid_status, player_ships):
     font = pygame.font.SysFont('Arial', 40)
     thinking_message = font.render("Computer thinking...", True, WHITE)
@@ -493,7 +554,10 @@ def handle_computer_turn(player_grid_status, player_ships):
             break
 
     return True  # Switch back to player's turn
-def draw_game_state(player_ships, computer_grid_status, player_grid_status, player_turn, computer_ships=None, debug_mode=False):
+
+
+def draw_game_state(player_ships, computer_grid_status, player_grid_status, player_turn, computer_ships=None,
+                    debug_mode=False):
     draw_grid_with_labels(50, 100, cells_size, rows, cols)  # Player grid
     draw_grid_with_labels(width - cols * cells_size - 50, 100, cells_size, rows, cols)  # Computer grid
 
@@ -515,6 +579,8 @@ def draw_game_state(player_ships, computer_grid_status, player_grid_status, play
     font = pygame.font.SysFont('Arial', 40)
     message_surface = font.render(message, True, WHITE)
     screen.blit(message_surface, (width // 2 - message_surface.get_width() // 2, 10))
+
+
 def draw_grid_status(grid_status, grid_start_x, grid_start_y):
     for row in range(rows):
         for col in range(cols):
@@ -528,6 +594,8 @@ def draw_grid_status(grid_status, grid_start_x, grid_start_y):
             pygame.draw.rect(screen, color, (
                 grid_start_x + col * cells_size, grid_start_y + row * cells_size, cells_size, cells_size
             ))
+
+
 def generate_computer_ships():
     ships = [
         {"name": "Submarine", "size": 2},
@@ -578,21 +646,26 @@ def generate_computer_ships():
     return placed_ships
 
     pygame.display.update()
+
+
 def rotate_ship(ship):
-    #Rotate the ship between horizontal and vertical
+    # Rotate the ship between horizontal and vertical
     if ship["horizontal"]:
         ship["rect"].width, ship["rect"].height = ship["rect"].height, ship["rect"].width
     else:
         ship["rect"].width, ship["rect"].height = ship["rect"].height, ship["rect"].width
     ship["horizontal"] = not ship["horizontal"]
-def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y):
+
+
+def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y, shooter="player"):
     # Check if the shot hits a ship
     for ship in ships:
         if ship["rect"].collidepoint(
-            grid_start_x + col * cells_size + cells_size // 2,
-            grid_start_y + row * cells_size + cells_size // 2
+                grid_start_x + col * cells_size + cells_size // 2,
+                grid_start_y + row * cells_size + cells_size // 2
         ):
             target_grid[row][col] = "hit"
+            log_action("Comp", "Attack", (row, col), "Hit")
             ship["hits"] += 1
             if ship["hits"] >= ship["size"]:  # Check if the ship is sunk
                 ship["status"] = "sunk"
@@ -601,9 +674,13 @@ def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y):
 
     # If no ship is hit, mark as miss
     target_grid[row][col] = "miss"
+    log_action(f"{shooter}", "Attack", (row, col), "Miss")
     return False
+
+
 def all_ships_sunk(ships):
     return all(ship["status"] == "sunk" for ship in ships)
+
 
 def display_transition_screen(current_player):
     screen.fill(BLACK)
@@ -613,51 +690,175 @@ def display_transition_screen(current_player):
     screen.blit(message_surface, (width // 2 - message_surface.get_width() // 2, height // 2))
     pygame.display.update()
     time.sleep(4)
+
+
 def display_game_over(message):
     font = pygame.font.SysFont('Arial', 80)
     text = font.render(message, True, RED)
     screen.blit(scaled_image, (0, 0))
     screen.blit(text, text.get_rect(center=(width // 2, height // 2)))
     pygame.display.update()
+    finalize_logs()
     time.sleep(3)
     pygame.quit()
     exit()
 
+def input_username_screen():
+    """Displays a screen for username input directly in the game window."""
+    input_running = True
+    username = ""
+
+    instruction_text = font.render("Input Username:", True, USERNAME_COLOR)
+
+    while input_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:  # Finish input on Enter
+                    if username.strip():
+                        input_running = False
+                elif event.key == pygame.K_BACKSPACE:  # Remove last character
+                    username = username[:-1]
+                else:
+                    username += event.unicode  # Add typed character
+
+        screen.blit(scaled_image, (0, 0))
+        instruction_rect = instruction_text.get_rect(center=(width // 2, height // 2 - 100))
+        screen.blit(instruction_text, instruction_rect)
+
+        # Draw typed username
+        username_surface = font.render(username, True, USERNAME_COLOR)
+        username_rect = username_surface.get_rect(center=(width // 2, height // 2))
+        screen.blit(username_surface, username_rect)
+
+        pygame.display.update()
+
+    return username
+
+def select_difficulty_screen():
+    """Displays a screen to select difficulty directly in the game window."""
+    selection_running = True
+    selected_difficulty = None
+
+    instruction_text = font.render("Select Difficulty:", True, WHITE)
+
+    easy_button = pygame.Rect(width // 2 - 150, height // 2 - 50, 300, 50)
+    hard_button = pygame.Rect(width // 2 - 150, height // 2 + 50, 300, 50)
+
+    while selection_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if easy_button.collidepoint(event.pos):
+                    selected_difficulty = "easy"
+                    selection_running = False
+                elif hard_button.collidepoint(event.pos):
+                    selected_difficulty = "hard"
+                    selection_running = False
+
+        # Draw background and buttons
+        screen.blit(scaled_image, (0, 0))
+        instruction_rect = instruction_text.get_rect(center=(width // 2, height // 2 - 150))
+        screen.blit(instruction_text, instruction_rect)
+
+        pygame.draw.rect(screen, GREEN, easy_button)
+        pygame.draw.rect(screen, RED, hard_button)
+
+        easy_text = font.render("Easy", True, BLACK)
+        hard_text = font.render("Hard", True, BLACK)
+
+        easy_text_rect = easy_text.get_rect(center=(easy_button.centerx, easy_button.centery))
+        hard_text_rect = hard_text.get_rect(center=(hard_button.centerx, hard_button.centery))
+
+        screen.blit(easy_text, easy_text_rect)
+        screen.blit(hard_text, hard_text_rect)
+
+        pygame.display.update()
+
+    return selected_difficulty
+
+def show_pause_menu(player_name, game_state):
+    paused = True
+    options = [
+        "Press S to Save and Exit",
+        "Press W to Save Without Exiting",
+        "Press Q to Quit without Saving",
+        "Press ESC to Continue"
+    ]
+
+    while paused:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s:  # Save and exit
+                    save_game(player_name, game_state)
+                    print("Game saved. Exiting...")
+                    pygame.quit()
+                    exit()
+                elif event.key == pygame.K_w:  # Save without exiting
+                    save_game(player_name, game_state)
+                    paused = False
+                elif event.key == pygame.K_q:  # Quit without saving
+                    print("Exiting without saving...")
+                    pygame.quit()
+                    exit()
+                elif event.key == pygame.K_ESCAPE:  # Resume
+                    paused = False
+
+        screen.fill(BLACK)
+        y_pos = 200
+        for option in options:
+            text = font.render(option, True, WHITE)
+            screen.blit(text, (width // 2 - text.get_width() // 2, y_pos))
+            y_pos += 50
+
+        pygame.display.update()
+
+def save_game(player_name, game_state):
+    """Save the current game state to a file."""
+    with open(f"{player_name}.txt", "w") as file:
+        json.dump(game_state, file)
+
+def load_game(player_name):
+    """Load the game state from a file if it exists."""
+    file_name = f"{player_name}.txt"
+    if os.path.exists(file_name):
+        with open(file_name, "r") as file:
+            return json.load(file)
+    return None
 
 
-#Loading game
-pGameGrid = created_game_grid(rows, cols, cells_size, (50, 50))
-pGameLogic = up_game_logic(rows, cols)
-
-cGameGrid = created_game_grid(rows, cols, cells_size, (width - (rows * cells_size), 50))
-cGameLogic = up_game_logic(rows, cols)
-
-#Menu functions
+# Menu functions
 def draw_button(text, color, rect):
     pygame.draw.rect(screen, color, rect)
     font = pygame.font.SysFont("Arial", 40)
     text_surface = font.render(text, True, (0, 0, 0))
     screen.blit(text_surface, (rect.x + 10, rect.y + 10))
+
+
 def main_menu():
     menu_running = True
     while menu_running:
-        #Draw the background first
+        # Draw the background first
         screen.blit(scaled_image, (0, 0))
         screen.blit(title_text, title_rect)
 
-        #Define button rectangles
+        # Define button rectangles
         start_button = pygame.Rect(width // 2 - 100, 200, 200, 50)
         settings_button = pygame.Rect(width // 2 - 100, 300, 200, 50)
         credits_button = pygame.Rect(width // 2 - 100, 400, 200, 50)
         quit_button = pygame.Rect(width // 2 - 100, 500, 200, 50)
 
-        #Draw buttons
+        # Draw buttons
         draw_button("Start Game", GREEN, start_button)
         draw_button("Settings", YELLOW, settings_button)
-        draw_button("Credits" , YELLOW , credits_button)
+        draw_button("Credits", YELLOW, credits_button)
         draw_button("Quit", RED, quit_button)
 
-        #Check for events
+        # Check for events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 menu_running = False
@@ -673,6 +874,8 @@ def main_menu():
                     return 'quit'
 
         pygame.display.update()
+
+
 def show_pause_menu():
     paused = True
     font = pygame.font.SysFont('Arial', 30)
@@ -695,6 +898,8 @@ def show_pause_menu():
         screen.fill(BLACK)
         screen.blit(resume_text, resume_rect)
         pygame.display.update()
+
+
 def credit_menu():
     # Flag to keep the credits menu running
     credits_running = True
@@ -731,10 +936,10 @@ def credit_menu():
 
         # Display each person's name and role
         start_y = 200  # Starting y-coordinate for names
-        spacing = 60   # Spacing between each name and role
+        spacing = 60  # Spacing between each name and role
         for credit in credits:
             name_text = name_font.render(f"{credit['name']}", True, BLACK)
-            role_text = name_font.render(f"{credit['role']}", True, (191, 64, 191) )
+            role_text = name_font.render(f"{credit['role']}", True, (191, 64, 191))
 
             name_rect = name_text.get_rect(center=(width // 2, start_y))
             role_rect = role_text.get_rect(center=(width // 2, start_y + 30))
@@ -752,9 +957,22 @@ def credit_menu():
         pygame.display.update()
 
 
-#Main flow
+# Main flow
 clock = pygame.time.Clock()
 running = True
+
+# Input username at the start
+player_name = input_username_screen()
+
+# Load saved game or initialize a new one
+game_state = load_game(player_name)
+if game_state:
+    choice = input("A saved game was found. Do you want to continue (yes/no)? ").strip().lower()
+    if choice != "yes":
+        game_state = {"player_grid": [[" " for _ in range(cols)] for _ in range(rows)],
+                      "computer_grid": [[" " for _ in range(cols)] for _ in range(rows)],
+                      "turn": "player"}
+
 while running:
     clock.tick(60)
     for event in pygame.event.get():
@@ -801,11 +1019,11 @@ while running:
             running = False
     elif menu_result == 'quit':
         running = False
-    # elif menu_result == 'settings':
+        # elif menu_result == 'settings':
         pass  # Add settings handling if needed
     elif menu_result == 'credits':
         credit_menu()
-        
+
     pygame.display.update()
 
 pygame.quit()
