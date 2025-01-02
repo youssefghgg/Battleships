@@ -22,6 +22,8 @@ current_direction = None  # Direction of exploration after detecting a ship
 ship_orientation = None  # Orientation of the ship (horizontal or vertical)
 current_ship_cells = []  # Tracks cells of the current target ship
 movement_logs = []
+
+
 # Fonts
 font = pygame.font.SysFont('Arial', 50)
 
@@ -44,13 +46,15 @@ scaled_image = pygame.transform.scale(background_image, (width, height))
 title_font = pygame.font.SysFont('Comic Sans MS', 70)
 title_text = title_font.render("BattleShips", True, WHITE)
 title_rect = title_text.get_rect(center=(width // 2, 100))
-# background_images = [ pygame.image.load('background1.jpg'), pygame.image.load('background2.jpg'), pygame.image.load('background3.jpg') ]
+
+
+# File vars
 log_filename = datetime.datetime.now().strftime("Game_Log_%Y-%m-%d_%H-%M.txt")
 log_file = open(log_filename, "w")
 
 
                                     # Game functions
-# Game
+# Game-youssef
 def start_game_singleplayer(player_ships, difficulty="easy"):
     running = True
 
@@ -198,7 +202,7 @@ def singleplayer_hardmode(player_grid_status, player_ships):
     return True  # Return control to the player
 
 
-# the setup of the ships
+# the setup of the ships-zeyad
 def singleplayer_setup():
     running = True
 
@@ -336,9 +340,8 @@ def generate_computer_ships():
                 placed = True
     return placed_ships
 
-    pygame.display.update()
 
-# Turns
+# Turns-ammar
 def handle_player_turn(computer_ships, computer_grid_status):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -392,7 +395,7 @@ def handle_computer_turn(player_grid_status, player_ships):
 
 
 # The shooting and the hitting
-def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y, shooter):
+def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y, shooter): #maro
     # Check if the shot hits a ship
     for ship in ships:
         if ship["rect"].collidepoint(
@@ -415,7 +418,7 @@ def all_ships_sunk(ships):
     return all(ship["status"] == "sunk" for ship in ships)
 
 
-# Files
+# Files-maro
 def input_username_screen():
     """Displays a screen for username input directly in the game window."""
     input_running = True
@@ -485,7 +488,7 @@ def finalize_logs():
     log_file.close()
     print(f"Logs saved to {log_filename}")
 
-# Grid functions
+# Grid functions-hassan
 def draw_grid_status(grid_status, grid_start_x, grid_start_y):
     for row in range(rows):
         for col in range(cols):
