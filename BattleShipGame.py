@@ -35,7 +35,6 @@ ORANGE = (255, 165, 0)
 PURPLE = (128, 0, 128)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
-
 GREY = (128, 128, 128)# Update typing color
 
 # Title and icon
@@ -62,55 +61,22 @@ sound_win = pygame.mixer.Sound("explosionwin.wav")
                                     # Game functions
 # Game-youssef
 def start_game_singleplayer(player_ships, difficulty="easy"):
+    """Starts a single-player game."""
     running = True
-
-    # Generate computer ships randomly
     computer_ships = generate_computer_ships()
-
-    # Create grids to track shot status
     computer_grid_status = [[None for _ in range(cols)] for _ in range(rows)]
     player_grid_status = [[None for _ in range(cols)] for _ in range(rows)]
-
-    # Variable to manage turns
-    player_turn = True
+    player_turn = True  # Player starts first
 
     while running:
-        # Handle all events first
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:  # Pause the game
-                    show_pause_menu()
-                elif event.key == pygame.K_q:  # Quit the game
-                    running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN and player_turn:
-                # Handle player's mouse click during their turn
-                mouse_x, mouse_y = event.pos
-                grid_start_x = width - cols * cells_size - 50
-                grid_start_y = 100
-                if grid_start_x <= mouse_x < grid_start_x + cols * cells_size and grid_start_y <= mouse_y < grid_start_y + rows * cells_size:
-                    col = (mouse_x - grid_start_x) // cells_size
-                    row = (mouse_y - grid_start_y) // cells_size
-                    if computer_grid_status[row][col] is None:  # If untouched
-                        handle_shooting(row, col, computer_ships, computer_grid_status, grid_start_x, grid_start_y, shooter= "player")
-                        player_turn = False  # Switch to computer's turn
-                        screen.blit(scaled_image, (0, 0))
 
-        # Update game state
-        if not player_turn:
-            # Handle computer's turn
-
-            player_turn = handle_computer_turn(player_grid_status, player_ships)
-            screen.blit(scaled_image, (0, 0))
-
-        if not player_turn:
+        if player_turn:
+            player_turn = handle_player_turn(computer_ships, computer_grid_status)
+        else:
             if difficulty == "hard":
                 player_turn = singleplayer_hardmode(player_grid_status, player_ships)
             else:
                 player_turn = handle_computer_turn(player_grid_status, player_ships)
-            screen.blit(scaled_image, (0, 0))
 
         # Check for game over
         if all_ships_sunk(computer_ships):
@@ -120,92 +86,142 @@ def start_game_singleplayer(player_ships, difficulty="easy"):
             display_game_over("Computer Wins!")
             running = False
 
-        # Draw game state
+        # Redraw game state
         screen.blit(scaled_image, (0, 0))
         draw_game_state(player_ships, computer_grid_status, player_grid_status, player_turn, computer_ships, debug_mode)
         pygame.display.update()
 def singleplayer_hardmode(player_grid_status, player_ships):
-    global target_stack, current_direction, ship_orientation, current_ship_cells
+    global current_direction, current_ship_cells, target_stack
+
 
     def find_adjacent_cells(row, col):
-        """Returns valid adjacent cells."""
+        """Find valid adjacent cells to target."""
         adjacent = []
-        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Up, Down, Left, Right
+        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nr, nc = row + dr, col + dc
-            if 0 <= nr < rows and 0 <= nc < cols:  # Check bounds first
-                if player_grid_status[nr][nc] is None:
-                    adjacent.append((nr, nc, dr, dc))
+            if 0 <= nr < rows and 0 <= nc < cols and player_grid_status[nr][nc] is None:
+                adjacent.append((nr, nc))
         return adjacent
 
     def choose_target():
-        """Chooses the next target based on the current state."""
-        if current_direction:
-            last_row, last_col = current_ship_cells[-1]
-            dr, dc = current_direction
-            next_row, next_col = last_row + dr, last_col + dc
-            if 0 <= next_row < rows and 0 <= next_col < cols and player_grid_status[next_row][next_col] is None:
-                return next_row, next_col, dr, dc
-            else:
-                # Switch to check the other direction
-                current_direction[0] *= -1
-                current_direction[1] *= -1
-                return choose_target()
-        elif target_stack:
-            return target_stack.pop()
-        else:
-            # Random targeting with parity
-            for parity in [(0, 0), (1, 1)]:
-                for row in range(rows):
-                    for col in range(cols):
-                        if (row % 2, col % 2) == parity and player_grid_status[row][col] is None:
-                            return row, col, 0, 0
+        """Choose the next target logically."""
+        global current_direction, current_ship_cells, target_stack
 
-            # Fallback in case all parity cells are checked
+        if current_direction and current_ship_cells:
+            # Continue in the current direction
+            dr, dc = current_direction
+            last_row, last_col = current_ship_cells[-1]
+            next_row, next_col = last_row + dr, last_col + dc
+
+            if 0 <= next_row < rows and 0 <= next_col < cols and player_grid_status[next_row][next_col] is None:
+                return next_row, next_col
+
+            # If the direction is exhausted, reset it
+            current_direction = None
+
+        if target_stack:
+            return target_stack.pop()
+
+        # Random targeting with parity for efficiency
+        for parity in [(0, 0), (1, 1)]:
             for row in range(rows):
                 for col in range(cols):
-                    if player_grid_status[row][col] is None:
-                        return row, col, 0, 0
+                    if (row % 2, col % 2) == parity and player_grid_status[row][col] is None:
+                        return row, col
 
-    # Choose a target
-    row, col, dr, dc = choose_target()
-    hit = handle_shooting(row, col, player_ships, player_grid_status, 50, 100, shooter="computer")
+        # Absolute fallback
+        for row in range(rows):
+            for col in range(cols):
+                if player_grid_status[row][col] is None:
+                    return row, col
+
+        raise RuntimeError("No valid targets available!")
+
+    # AI chooses a target
+    row, col = choose_target()
+    hit = handle_shooting_hardmode(row, col, player_ships, player_grid_status)
 
     if hit:
         current_ship_cells.append((row, col))
 
-        if not current_direction:
-            # First hit: Populate adjacent cells
-            adjacent = find_adjacent_cells(row, col)
-            target_stack.extend(cell for cell in adjacent if cell[:2] not in target_stack)
-        else:
-            # Continue in the current direction
-            next_row, next_col = row + dr, col + dc
-            if 0 <= next_row < rows and 0 <= next_col < cols and player_grid_status[next_row][next_col] is None:
-                target_stack.append((next_row, next_col, dr, dc))
-    else:
-        current_direction = None
-        if len(current_ship_cells) > 1:
-            # Check both ends of the ship
-            start_cell = current_ship_cells[0]
-            end_cell = current_ship_cells[-1]
-            adjacent = find_adjacent_cells(*start_cell) + find_adjacent_cells(*end_cell)
-            target_stack.extend(cell for cell in adjacent if cell[:2] not in target_stack)
-        else:
-            # Reset for new target
-            current_ship_cells.clear()
-            ship_orientation = None
+        # Add adjacent cells to the stack only for the first hit
+        if len(current_ship_cells) == 1:
+            target_stack.extend(find_adjacent_cells(row, col))
 
-    # If the current ship sinks, reset for the next target
+        # Determine direction if it's the second hit
+        if len(current_ship_cells) > 1 and not current_direction:
+            first_row, first_col = current_ship_cells[0]
+            dr, dc = row - first_row, col - first_col
+            current_direction = [dr, dc]
+    else:
+        # If no hit, reset the direction
+        current_direction = None
+
+    # Check if a ship was sunk
     for ship in player_ships:
         if ship["status"] == "alive" and ship["hits"] >= ship["size"]:
             ship["status"] = "sunk"
-            current_direction = None
+            sound_destroyed.play()
+
+            # Remove the sunk ship from tracking but don't clear target_stack
             current_ship_cells.clear()
-            ship_orientation = None
-            target_stack.clear()
+            current_direction = None  # Reset direction only for the sunk ship
             break
 
-    return True  # Return control to the player
+    # Continue processing adjacent cells for potential other ships
+    if target_stack:
+        return True  # AI will continue targeting from the stack
+
+    return True  # End AI turn if no targets remain
+
+def handle_shooting_hardmode(row, col, ships, target_grid):
+    """Handles shooting logic specifically for hard mode."""
+    for ship in ships:
+        if ship["rect"].collidepoint(
+            50 + col * cells_size + cells_size // 2,
+            100 + row * cells_size + cells_size // 2
+        ):
+            target_grid[row][col] = "hit"
+            log_action("Computer", "Attack", (row, col), "Hit")
+            ship["hits"] += 1
+            sound_hit.play()
+            if ship["hits"] >= ship["size"]:
+                ship["status"] = "sunk"
+                sound_destroyed.play()
+            return True
+
+    target_grid[row][col] = "miss"
+    log_action("Computer", "Attack", (row, col), "Miss")
+    sound_turnchange.play()
+    return False
+def handle_shooting_singleplayer(row, col, ships, target_grid, grid_start_x, grid_start_y, shooter):
+    """Handles shooting logic specifically for singleplayer."""
+    for ship in ships:
+        if ship["rect"].collidepoint(
+            grid_start_x + col * cells_size + cells_size // 2,
+            grid_start_y + row * cells_size + cells_size // 2
+        ):
+            target_grid[row][col] = "hit"
+            log_action(shooter, "Attack", (row, col), "Hit")
+            ship["hits"] += 1
+            sound_hit.play()
+            if ship["hits"] >= ship["size"]:
+                ship["status"] = "sunk"
+                sound_destroyed.play()
+            return True
+
+    target_grid[row][col] = "miss"
+    log_action(shooter, "Attack", (row, col), "Miss")
+    sound_turnchange.play()
+    return False
+def show_thinking_message():
+    font = pygame.font.SysFont('Arial', 40)
+    thinking_message = font.render("Computer thinking...", True, WHITE)
+    screen.blit(scaled_image, (0, 0))  # Clear screen
+    screen.blit(thinking_message, (width // 2 - thinking_message.get_width() // 2, 10))
+    pygame.display.update()
+    time.sleep(2)  # Pause for 2 seconds
+
 
 
 # the setup of the ships-zeyad
@@ -384,12 +400,7 @@ def handle_player_turn(computer_ships, computer_grid_status):
                     return False  # Switch to computer's turn
     return True  # Stay on player's turn
 def handle_computer_turn(player_grid_status, player_ships):
-    font = pygame.font.SysFont('Arial', 40)
-    thinking_message = font.render("Computer thinking...", True, WHITE)
-    screen.blit(thinking_message, (width // 2 - thinking_message.get_width() // 2, 10))
-    pygame.display.update()
-    time.sleep(2)  # Simulate thinking delay
-
+    show_thinking_message()
     while True:
         row = random.randint(0, rows - 1)
         col = random.randint(0, cols - 1)
@@ -422,7 +433,7 @@ def handle_shooting(row, col, ships, target_grid, grid_start_x, grid_start_y, sh
     target_grid[row][col] = "miss"
     log_action(f"{shooter}", "Attack", (row, col), "Miss")
     sound_turnchange.play()
-    return False
+    return False #miss
 def all_ships_sunk(ships):
     return all(ship["status"] == "sunk" for ship in ships)
 
@@ -638,30 +649,30 @@ def show_pause_menu(player_name, game_state):
 def main_menu():
     menu_running = True
     while menu_running:
-        # Draw the background first
+        # Draw the background and title
         screen.blit(scaled_image, (0, 0))
         screen.blit(title_text, title_rect)
 
-        # Define button rectangles
+        # Define buttons
         start_button = pygame.Rect(width // 2 - 80, 200, 150, 50)
         credits_button = pygame.Rect(width // 2 - 80, 300, 150, 50)
         quit_button = pygame.Rect(width // 2 - 80, 400, 150, 50)
 
         # Draw buttons
-        draw_button("  Start", WHITE, start_button)
-
+        draw_button("Start", WHITE, start_button)
         draw_button("Credits", WHITE, credits_button)
-        draw_button("  Quit", WHITE, quit_button)
+        draw_button("Quit", WHITE, quit_button)
 
-        # Check for events
+        # Handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 menu_running = False
                 return 'quit'
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.collidepoint(event.pos):
-                    return 'start'
-
+                    difficulty = select_difficulty()
+                    if difficulty:
+                        return 'start', difficulty
                 elif credits_button.collidepoint(event.pos):
                     return 'credits'
                 elif quit_button.collidepoint(event.pos):
@@ -756,6 +767,40 @@ def display_game_over(message):
     time.sleep(3)
     pygame.quit()
     exit()
+def select_difficulty():
+    selecting_difficulty = True
+    while selecting_difficulty:
+        # Draw the background and title
+        screen.blit(scaled_image, (0, 0))
+        title_font = pygame.font.SysFont('Arial', 50)
+        title_text = title_font.render("Select Difficulty", True, WHITE)
+        title_rect = title_text.get_rect(center=(width // 2, 100))
+        screen.blit(title_text, title_rect)
+
+        # Define buttons
+        easy_button = pygame.Rect(width // 2 - 80, 200, 150, 50)
+        hard_button = pygame.Rect(width // 2 - 80, 300, 150, 50)
+        back_button = pygame.Rect(width // 2 - 80, 400, 150, 50)
+
+        # Draw buttons
+        draw_button("Easy", WHITE, easy_button)
+        draw_button("Hard", WHITE, hard_button)
+        draw_button("Back", WHITE, back_button)
+
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if easy_button.collidepoint(event.pos):
+                    return "easy"
+                elif hard_button.collidepoint(event.pos):
+                    return "hard"
+                elif back_button.collidepoint(event.pos):
+                    return None  # Go back to the main menu
+
+        pygame.display.update()
 
 
 # Main flow
@@ -776,32 +821,14 @@ if game_state:
 
 while running:
     clock.tick(60)
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:  # Pause on ESC
-                show_pause_menu()
-            elif event.key == pygame.K_q:  # Quit on Q
-                running = False
-
     menu_result = main_menu()
-    if menu_result == 'start':
-         player_ships = singleplayer_setup()
-                       # Choose difficulty
-         difficulty = input("Choose difficulty: 'easy' or 'hard': ").strip().lower()
-         if difficulty not in ["easy", "hard"]:
-            difficulty = "easy"  # Default to easy if input is invalid
-
-
-         start_game_singleplayer(player_ships, difficulty=difficulty)
-
+    if menu_result and menu_result[0] == 'start':
+        player_ships = singleplayer_setup()
+        difficulty = menu_result[1]
+        start_game_singleplayer(player_ships, difficulty=difficulty)
     elif menu_result == 'quit':
         running = False
-
     elif menu_result == 'credits':
         credit_menu()
-
-    pygame.display.update()
 
 pygame.quit()
