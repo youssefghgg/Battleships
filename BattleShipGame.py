@@ -4,8 +4,6 @@ import time
 import datetime
 import os
 import json
-import math
-import pygame.gfxdraw
 
 # Initialize pygame
 pygame.init()
@@ -29,23 +27,15 @@ movement_logs = []
 # Fonts
 font = pygame.font.SysFont('Arial', 50)
 
-class Colors:
-    # Modern Naval Theme
-    NAVY_BLUE = (0, 32, 63)
-    OCEAN_BLUE = (0, 105, 148)
-    WATER_HIGHLIGHT = (64, 164, 223)
-    SAND_COLOR = (238, 214, 175)
-    GRID_LINES = (155, 207, 243)
-    SHIP_COLOR = (169, 169, 169)
-    HIT_MARKER = (255, 69, 0)  # Bright orange-red
-    MISS_MARKER = (255, 255, 255)  # White splash
-
+# Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-GREY = Colors.SHIP_COLOR
-RED = Colors.HIT_MARKER
-PURPLE = (147, 112, 219)
-GREEN = Colors.WATER_HIGHLIGHT
+GREEN = (0, 255, 0)
+ORANGE = (255, 165, 0)
+PURPLE = (128, 0, 128)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+GREY = (128, 128, 128)# Update typing color
 
 # Title and icon
 pygame.display.set_caption("Battleships")
@@ -231,53 +221,8 @@ def show_thinking_message():
     screen.blit(thinking_message, (width // 2 - thinking_message.get_width() // 2, 10))
     pygame.display.update()
     time.sleep(2)  # Pause for 2 seconds
-def draw_modern_button(text, color, rect, hover=False):
-    # Draw button shadow
-    shadow_rect = rect.copy()
-    shadow_rect.x += 3
-    shadow_rect.y += 3
-    pygame.draw.rect(screen, Colors.NAVY_BLUE, shadow_rect, border_radius=10)
 
-    # Draw main button with gradient
-    pygame.draw.rect(screen, color, rect, border_radius=10)
-    if hover:
-        highlight_color = tuple(min(c + 30, 255) for c in color)
-        pygame.draw.rect(screen, highlight_color, rect, border_radius=10)
 
-    # Add glossy effect
-    highlight = pygame.Surface((rect.width, rect.height // 2), pygame.SRCALPHA)
-    pygame.draw.rect(highlight, (255, 255, 255, 30), highlight.get_rect(), border_radius=10)
-    screen.blit(highlight, (rect.x, rect.y))
-
-    # Draw text with shadow
-    font = pygame.font.SysFont("Arial", 40)
-    text_shadow = font.render(text, True, Colors.NAVY_BLUE)
-    text_surface = font.render(text, True, Colors.SAND_COLOR)
-    text_rect = text_surface.get_rect(center=rect.center)
-    screen.blit(text_shadow, (text_rect.x + 2, text_rect.y + 2))
-    screen.blit(text_surface, text_rect)
-def draw_modern_ship(screen, ship, selected=False):
-    rect = ship["rect"]
-    # Draw ship shadow
-    shadow_rect = rect.copy()
-    shadow_rect.x += 2
-    shadow_rect.y += 2
-    pygame.draw.rect(screen, Colors.NAVY_BLUE, shadow_rect, border_radius=5)
-
-    # Draw main ship body
-    base_color = Colors.SHIP_COLOR if not selected else Colors.WATER_HIGHLIGHT
-    pygame.draw.rect(screen, base_color, rect, border_radius=5)
-
-    # Add metallic effect
-    highlight = pygame.Surface((rect.width, rect.height // 3), pygame.SRCALPHA)
-    pygame.draw.rect(highlight, (255, 255, 255, 30), highlight.get_rect(), border_radius=5)
-    screen.blit(highlight, (rect.x, rect.y))
-
-    # Draw ship name
-    font = pygame.font.SysFont('Arial', 20)
-    name_text = font.render(ship["name"], True, Colors.SAND_COLOR)
-    name_rect = name_text.get_rect(center=(rect.centerx, rect.y - 10))
-    screen.blit(name_text, name_rect)
 
 # the setup of the ships-zeyad
 def singleplayer_setup():
@@ -568,28 +513,15 @@ def draw_grid_status(grid_status, grid_start_x, grid_start_y):
     for row in range(rows):
         for col in range(cols):
             cell_status = grid_status[row][col]
-            center_x = grid_start_x + col * cells_size + cells_size // 2
-            center_y = grid_start_y + row * cells_size + cells_size // 2
-
             if cell_status == 'hit':
-                # Draw explosion effect
-                radius = cells_size // 3
-                pygame.draw.circle(screen, Colors.HIT_MARKER, (center_x, center_y), radius)
-                pygame.draw.circle(screen, (255, 255, 255), (center_x, center_y), radius - 2, 1)
-                # Add explosion rays
-                for angle in range(0, 360, 45):
-                    end_x = center_x + math.cos(math.radians(angle)) * (radius + 5)
-                    end_y = center_y + math.sin(math.radians(angle)) * (radius + 5)
-                    pygame.draw.line(screen, Colors.HIT_MARKER, (center_x, center_y), (end_x, end_y), 2)
-
+                color = RED  # Orange for hit
             elif cell_status == 'miss':
-                # Draw ripple effect
-                time_offset = pygame.time.get_ticks() / 500
-                for i in range(3):
-                    radius = (cells_size // 4) + i * 3
-                    wave = math.sin(time_offset + i * 0.5) * 2
-                    pygame.draw.circle(screen, Colors.MISS_MARKER,
-                                       (center_x, center_y), radius + wave, 1)
+                color = PURPLE  # Purple for miss
+            else:
+                continue
+            pygame.draw.rect(screen, color, (
+                grid_start_x + col * cells_size, grid_start_y + row * cells_size, cells_size, cells_size
+            ))
 def draw_game_state(player_ships, computer_grid_status, player_grid_status, player_turn, computer_ships=None,
                     debug_mode=False):
     draw_grid_with_labels(50, 100, cells_size, rows, cols)  # Player grid
@@ -614,38 +546,23 @@ def draw_game_state(player_ships, computer_grid_status, player_grid_status, play
     message_surface = font.render(message, True, WHITE)
     screen.blit(message_surface, (width // 2 - message_surface.get_width() // 2, 10))
 def draw_grid_with_labels(x_start, y_start, cell_size, rows, cols):
-    time_now = pygame.time.get_ticks() / 1000
-
-    # Draw water background
+    # Draw the grid
     for row in range(rows):
         for col in range(cols):
             x = x_start + col * cell_size
             y = y_start + row * cell_size
+            pygame.draw.rect(screen, WHITE, pygame.Rect(x, y, cell_size, cell_size), 1)
 
-            # Create dynamic water effect
-            wave = math.sin(time_now + row * 0.1 + col * 0.1) * 10
-            water_color = (
-                min(255, Colors.OCEAN_BLUE[0] + wave),
-                min(255, Colors.OCEAN_BLUE[1] + wave),
-                min(255, Colors.OCEAN_BLUE[2] + wave)
-            )
-
-            pygame.draw.rect(screen, water_color,
-                             (x, y, cell_size, cell_size))
-
-            # Draw grid lines with transparency
-            pygame.draw.rect(screen, Colors.GRID_LINES,
-                             (x, y, cell_size, cell_size), 1)
-
-    # Draw modern labels
+    # Draw row labels (A-J)
     font = pygame.font.SysFont('Arial', 30)
     for i in range(rows):
-        label = font.render(chr(65 + i), True, Colors.SAND_COLOR)
+        label = font.render(chr(65 + i), True, WHITE)  # A=65 in ASCII
         screen.blit(label, (x_start - 30, y_start + i * cell_size + 10))
 
+    # Draw column labels (1-10)
     for j in range(cols):
-        label = font.render(str(j + 1), True, Colors.SAND_COLOR)
-        screen.blit(label, (x_start + j * cell_size + 10, y_start - 30))
+        label = font.render(str(j + 1), True, WHITE)
+        screen.blit(label, (x_start + j * cell_size + 15, y_start - 30))
 def snap_to_grid(x, y, grid_start_x, grid_start_y, cell_size, grid_width, grid_height, ship_width, ship_height):
     # Snap the ship to the nearest valid grid cell
     snapped_x = round((x - grid_start_x) / cell_size) * cell_size + grid_start_x
