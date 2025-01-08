@@ -271,13 +271,15 @@ class Ship:
             self.sprite.draw(surface, cell_x, cell_y, cell_size, self.color)
 
 class Grid:
-    def __init__(self, x, y, cell_size=40):
-        self.x = x
-        self.y = y
-        self.cell_size = cell_size
-        self.grid_size = 10
-        self.cells = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
-        self.letters = 'ABCDEFGHIJ'
+    class Grid:
+        def __init__(self, x, y, cell_size=40):
+            self.x = x
+            self.y = y
+            self.cell_size = cell_size
+            self.grid_size = 10
+            self.cells = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
+            self.hits = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]  # Add this line
+            self.letters = 'ABCDEFGHIJ'
 
     def draw(self, surface):
         # Draw grid background with water effect
@@ -515,7 +517,213 @@ class BattleshipSprite:
             ], 2)
 
 
+class StartButton:
+    def __init__(self, x, y):
+        self.width = 200
+        self.height = 60
+        self.x = x - self.width // 2  # Center horizontally
+        self.y = y
+        self.color = NAVY_BLUE
+        self.hover_color = LIGHT_BLUE
+        self.is_hovered = False
+        self.is_visible = False
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)  # Add this line
 
+    def draw(self, surface):
+        if not self.is_visible:
+            return
+
+        color = self.hover_color if self.is_hovered else self.color
+
+        # Draw button with gradient and glow effect
+        for i in range(3):
+            glow_rect = self.rect.inflate(i * 2, i * 2)
+            pygame.draw.rect(surface, color, glow_rect, border_radius=15)
+
+        pygame.draw.rect(surface, WHITE, self.rect, 3, border_radius=15)
+
+        # Draw text with shadow
+        text = menu_font.render("START BATTLE", True, (0, 0, 0))
+        text_light = menu_font.render("START BATTLE", True, WHITE)
+        text_rect = text_light.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
+
+        # Draw shadow
+        surface.blit(text, text_rect.move(2, 2))
+        # Draw main text
+        surface.blit(text_light, text_rect)
+
+    def handle_event(self, event):
+        if not self.is_visible:
+            return False
+
+        if event.type == pygame.MOUSEMOTION:
+            self.is_hovered = self.rect.collidepoint(event.pos)
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            return self.is_hovered and self.rect.collidepoint(event.pos)
+        return False
+
+
+class Minimap:
+    def __init__(self, player_grid, x, y, radius=50):
+        self.player_grid = player_grid
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.is_expanded = False
+        self.expanded_size = 300
+        self.transition_time = 0
+        self.is_hovered = False
+
+    def draw(self, surface):
+        mouse_pos = pygame.mouse.get_pos()
+        self.is_hovered = math.sqrt((mouse_pos[0] - self.x) ** 2 +
+                                    (mouse_pos[1] - self.y) ** 2) < self.radius
+
+        if self.is_hovered:
+            self.transition_time = min(1.0, self.transition_time + 0.1)
+        else:
+            self.transition_time = max(0.0, self.transition_time - 0.1)
+
+        current_size = self.radius + (self.expanded_size - self.radius) * self.transition_time
+
+        # Draw circular frame
+        pygame.draw.circle(surface, NAVY_BLUE, (self.x, self.y), current_size)
+        pygame.draw.circle(surface, WHITE, (self.x, self.y), current_size, 2)
+
+        # Calculate grid cell size based on current display size
+        cell_size = (current_size * 2 - 20) / 10
+
+        # Draw miniature grid
+        for i in range(10):
+            for j in range(10):
+                cell_x = self.x - current_size + 10 + j * cell_size
+                cell_y = self.y - current_size + 10 + i * cell_size
+                cell_rect = pygame.Rect(cell_x, cell_y, cell_size, cell_size)
+
+                # Draw cell content
+                if self.player_grid.cells[i][j] is not None:
+                    pygame.draw.rect(surface, self.player_grid.cells[i][j].color, cell_rect)
+                pygame.draw.rect(surface, WHITE, cell_rect, 1)
+
+
+class ComputerGrid(Grid):
+    def __init__(self, x, y, cell_size=40):
+        super().__init__(x, y, cell_size)
+        self.hits = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
+        self.place_computer_ships()
+
+    def place_computer_ships(self):
+        ships = [
+            Ship("Air Carrier", 5, (100, 100, 100)),
+            Ship("Battleship", 4, (72, 72, 72)),
+            Ship("Destroyer", 4, (128, 128, 128)),
+            Ship("Cruiser", 3, (169, 169, 169)),
+            Ship("Submarine", 2, (192, 192, 192))
+        ]
+
+        for ship in ships:
+            placed = False
+            while not placed:
+                # Random position and orientation
+                x = random.randint(0, self.grid_size - 1)
+                y = random.randint(0, self.grid_size - 1)
+                ship.is_vertical = random.choice([True, False])
+
+                # Check if placement is valid
+                can_place = True
+                ship_cells = []
+
+                for i in range(ship.size):
+                    new_x = x + (0 if ship.is_vertical else i)
+                    new_y = y + (i if ship.is_vertical else 0)
+
+                    if (new_x >= self.grid_size or new_y >= self.grid_size or
+                            self.cells[new_y][new_x] is not None):
+                        can_place = False
+                        break
+                    ship_cells.append((new_x, new_y))
+
+                if can_place:
+                    for cell_x, cell_y in ship_cells:
+                        self.cells[cell_y][cell_x] = ship
+                    ship.cells = ship_cells
+                    ship.is_placed = True
+                    placed = True
+
+
+def battle_screen(player_grid):
+    clock = pygame.time.Clock()
+    computer_grid = ComputerGrid(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 200)
+    minimap = Minimap(player_grid, 80, 80)
+    player_turn = True
+    game_over = False
+
+    while not game_over:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.MOUSEBUTTONDOWN and player_turn:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                grid_x = (mouse_x - computer_grid.x) // computer_grid.cell_size
+                grid_y = (mouse_y - computer_grid.y) // computer_grid.cell_size
+
+                if (0 <= grid_x < computer_grid.grid_size and
+                        0 <= grid_y < computer_grid.grid_size and
+                        computer_grid.hits[grid_y][grid_x] is None):
+                    # Mark hit or miss
+                    hit = computer_grid.cells[grid_y][grid_x] is not None
+                    computer_grid.hits[grid_y][grid_x] = hit
+                    player_turn = False
+
+        # Computer's turn
+        if not player_turn:
+            # Simple AI: random shots
+            while True:
+                x = random.randint(0, player_grid.grid_size - 1)
+                y = random.randint(0, player_grid.grid_size - 1)
+                if player_grid.hits[y][x] is None:
+                    player_grid.hits[y][x] = player_grid.cells[y][x] is not None
+                    player_turn = True
+                    break
+
+        # Draw
+        screen.fill(SKY_BLUE)
+
+        # Draw title
+        title_text = "BATTLE PHASE"
+        title_surface = title_font.render(title_text, True, WHITE)
+        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 50))
+        screen.blit(title_surface, title_rect)
+
+        # Draw computer's grid
+        computer_grid.draw(screen)
+
+        for y in range(computer_grid.grid_size):
+            for x in range(computer_grid.grid_size):
+                if computer_grid.hits[y][x] is not None:
+                    center_x = computer_grid.x + x * computer_grid.cell_size + computer_grid.cell_size // 2
+                    center_y = computer_grid.y + y * computer_grid.cell_size + computer_grid.cell_size // 2
+                    if computer_grid.hits[y][x]:  # Hit
+                        pygame.draw.circle(screen, (255, 0, 0), (center_x, center_y),
+                                           computer_grid.cell_size // 3)
+                    else:  # Miss
+                        pygame.draw.circle(screen, WHITE, (center_x, center_y),
+                                           computer_grid.cell_size // 3, 2)
+
+        # Draw minimap
+        minimap.draw(screen)
+
+        # Draw turn indicator
+        turn_text = "Your Turn" if player_turn else "Computer's Turn"
+        turn_surface = menu_font.render(turn_text, True, WHITE)
+        turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50))
+        screen.blit(turn_surface, turn_rect)
+
+        pygame.display.flip()
+        clock.tick(60)
 
 def place_ships_screen():
     clock = pygame.time.Clock()
@@ -523,15 +731,18 @@ def place_ships_screen():
 
     # Create ships with different colors and proper names
     ships = [
-        Ship("Air Carrier", 5, (100, 100, 100)),  # Gray for carrier
-        Ship("Battleship", 4, (72, 72, 72)),  # Darker gray for battleship
-        Ship("Destroyer", 4, (128, 128, 128)),  # Medium gray for destroyer
-        Ship("Cruiser", 3, (169, 169, 169)),  # Light gray for cruiser
-        Ship("Submarine", 2, (192, 192, 192))  # Very light gray for submarine
+        Ship("Air Carrier", 5, (100, 100, 100)),
+        Ship("Battleship", 4, (72, 72, 72)),
+        Ship("Destroyer", 4, (128, 128, 128)),
+        Ship("Cruiser", 3, (169, 169, 169)),
+        Ship("Submarine", 2, (192, 192, 192))
     ]
 
     current_ship = 0
     selected_ship = None
+
+    # Create start button
+    start_button = StartButton(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 100)
 
     # Initial position for the first ship
     ships[0].x = grid.x
@@ -544,11 +755,17 @@ def place_ships_screen():
                 sys.exit()
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r and selected_ship:
-                    # Rotate ship
-                    selected_ship.is_vertical = not selected_ship.is_vertical
+                if event.key == pygame.K_r and current_ship < len(ships):
+                    # Rotate current ship
+                    ships[current_ship].is_vertical = not ships[current_ship].is_vertical
+                    ships[current_ship].sprite.is_vertical = ships[current_ship].is_vertical
 
             if event.type == pygame.MOUSEBUTTONDOWN:
+                # Handle start button
+                if start_button.handle_event(event):
+                    if current_ship >= len(ships):  # Only transition if all ships are placed
+                        battle_screen(grid)
+                        return
                 if current_ship < len(ships):
                     mouse_x, mouse_y = pygame.mouse.get_pos()
                     ship = ships[current_ship]
@@ -594,6 +811,9 @@ def place_ships_screen():
                             if current_ship < len(ships):
                                 ships[current_ship].x = grid.x
                                 ships[current_ship].y = grid.y + grid.cell_size * grid.grid_size + 50
+                            else:
+                                # All ships placed, show start button
+                                start_button.is_visible = True
 
         # Update
         if current_ship < len(ships):
@@ -629,6 +849,9 @@ def place_ships_screen():
         # Draw current ship preview
         if current_ship < len(ships) and not ships[current_ship].is_placed:
             ships[current_ship].draw(screen, grid.x, grid.y, grid.cell_size)
+
+        # Draw start button
+        start_button.draw(screen)
 
         pygame.display.flip()
         clock.tick(60)
