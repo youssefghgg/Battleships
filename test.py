@@ -270,16 +270,17 @@ class Ship:
             self.sprite.is_vertical = self.is_vertical
             self.sprite.draw(surface, cell_x, cell_y, cell_size, self.color)
 
+
+
 class Grid:
-    class Grid:
-        def __init__(self, x, y, cell_size=40):
-            self.x = x
-            self.y = y
-            self.cell_size = cell_size
-            self.grid_size = 10
-            self.cells = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
-            self.hits = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]  # Add this line
-            self.letters = 'ABCDEFGHIJ'
+    def __init__(self, x, y, cell_size=40):
+        self.x = x
+        self.y = y
+        self.cell_size = cell_size
+        self.grid_size = 10
+        self.cells = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
+        self.hits = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
+        self.letters = 'ABCDEFGHIJ'
 
     def draw(self, surface):
         # Draw grid background with water effect
@@ -289,48 +290,30 @@ class Grid:
 
         # Draw outer border with gradient effect
         pygame.draw.rect(surface, GRID_BG, grid_rect)
-        for i in range(5):  # Create border gradient
+        for i in range(5):
             border_rect = pygame.Rect(self.x - i, self.y - i,
                                       self.cell_size * self.grid_size + i * 2,
                                       self.cell_size * self.grid_size + i * 2)
             pygame.draw.rect(surface, WATER_BLUE, border_rect, 2)
 
-        # Draw water-like cells
+        # Draw cells
         for row in range(self.grid_size):
             for col in range(self.grid_size):
                 cell_x = self.x + col * self.cell_size
                 cell_y = self.y + row * self.cell_size
                 cell_rect = pygame.Rect(cell_x, cell_y, self.cell_size, self.cell_size)
-
-                # Create slight variation in cell colors for water effect
-                cell_color = (
-                    WATER_BLUE[0],
-                    WATER_BLUE[1],
-                    WATER_BLUE[2] + random.randint(-20, 20)
-                )
-                pygame.draw.rect(surface, cell_color, cell_rect)
+                pygame.draw.rect(surface, WATER_BLUE, cell_rect)
                 pygame.draw.rect(surface, WHITE, cell_rect, 1)
 
-        # Draw grid lines
-        for i in range(self.grid_size + 1):
-            # Vertical lines
-            pygame.draw.line(surface, WHITE,
-                             (self.x + i * self.cell_size, self.y),
-                             (self.x + i * self.cell_size, self.y + self.grid_size * self.cell_size))
-            # Horizontal lines
-            pygame.draw.line(surface, WHITE,
-                             (self.x, self.y + i * self.cell_size),
-                             (self.x + self.grid_size * self.cell_size, self.y + i * self.cell_size))
-
-        # Draw column numbers (1-10)
+        # Draw labels
         for i in range(self.grid_size):
+            # Numbers
             num_text = datetime_font.render(str(i + 1), True, WHITE)
             num_rect = num_text.get_rect(center=(self.x + (i + 0.5) * self.cell_size,
                                                  self.y - 20))
             surface.blit(num_text, num_rect)
 
-        # Draw row letters (A-J)
-        for i in range(self.grid_size):
+            # Letters
             letter_text = datetime_font.render(self.letters[i], True, WHITE)
             letter_rect = letter_text.get_rect(center=(self.x - 20,
                                                        self.y + (i + 0.5) * self.cell_size))
@@ -521,13 +504,13 @@ class StartButton:
     def __init__(self, x, y):
         self.width = 200
         self.height = 60
-        self.x = x - self.width // 2  # Center horizontally
+        self.x = x - self.width // 2
         self.y = y
         self.color = NAVY_BLUE
         self.hover_color = LIGHT_BLUE
         self.is_hovered = False
         self.is_visible = False
-        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)  # Add this line
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
     def draw(self, surface):
         if not self.is_visible:
@@ -542,15 +525,16 @@ class StartButton:
 
         pygame.draw.rect(surface, WHITE, self.rect, 3, border_radius=15)
 
-        # Draw text with shadow
-        text = menu_font.render("START BATTLE", True, (0, 0, 0))
-        text_light = menu_font.render("START BATTLE", True, WHITE)
-        text_rect = text_light.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
+        # Draw text
+        text = menu_font.render("START", True, WHITE)
+        text_rect = text.get_rect(center=self.rect.center)
+        surface.blit(text, text_rect)
 
-        # Draw shadow
-        surface.blit(text, text_rect.move(2, 2))
-        # Draw main text
-        surface.blit(text_light, text_rect)
+        # Debug visualization
+        pygame.draw.circle(surface, (255, 0, 0), (self.rect.left, self.rect.top), 3)
+        pygame.draw.circle(surface, (255, 0, 0), (self.rect.right, self.rect.top), 3)
+        pygame.draw.circle(surface, (255, 0, 0), (self.rect.right, self.rect.bottom), 3)
+        pygame.draw.circle(surface, (255, 0, 0), (self.rect.left, self.rect.bottom), 3)
 
     def handle_event(self, event):
         if not self.is_visible:
