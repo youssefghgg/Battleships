@@ -246,6 +246,194 @@ class Island:
         for i in range(0, len(leaf_points), 2):
             pygame.draw.line(surface, ISLAND_GREEN, (x - 10, y - 30), leaf_points[i], 3)
 
+class Ship:
+    def __init__(self, name, size, color=(128, 128, 128)):
+        self.name = name
+        self.size = size
+        self.color = color
+        self.x = 0
+        self.y = 0
+        self.is_vertical = False
+        self.is_placed = False
+        self.cells = []  # Store the grid cells the ship occupies
+
+    def draw(self, surface, grid_x, grid_y, cell_size):
+        if not self.is_placed:
+            # Draw the ship preview
+            width = self.size * cell_size if not self.is_vertical else cell_size
+            height = cell_size if not self.is_vertical else self.size * cell_size
+            ship_rect = pygame.Rect(self.x, self.y, width, height)
+            pygame.draw.rect(surface, self.color, ship_rect)
+            pygame.draw.rect(surface, WHITE, ship_rect, 2)
+        else:
+            # Draw the placed ship
+            for cell in self.cells:
+                x = grid_x + cell[0] * cell_size
+                y = grid_y + cell[1] * cell_size
+                ship_rect = pygame.Rect(x, y, cell_size, cell_size)
+                pygame.draw.rect(surface, self.color, ship_rect)
+                pygame.draw.rect(surface, WHITE, ship_rect, 2)
+
+
+class Grid:
+    def __init__(self, x, y, cell_size=40):
+        self.x = x
+        self.y = y
+        self.cell_size = cell_size
+        self.grid_size = 10
+        self.cells = [[None for _ in range(self.grid_size)] for _ in range(self.grid_size)]
+        self.letters = 'ABCDEFGHIJ'
+
+    def draw(self, surface):
+        # Draw grid background
+        grid_rect = pygame.Rect(self.x, self.y,
+                                self.cell_size * self.grid_size,
+                                self.cell_size * self.grid_size)
+        pygame.draw.rect(surface, NAVY_BLUE, grid_rect)
+
+        # Draw grid lines
+        for i in range(self.grid_size + 1):
+            # Vertical lines
+            pygame.draw.line(surface, WHITE,
+                             (self.x + i * self.cell_size, self.y),
+                             (self.x + i * self.cell_size, self.y + self.grid_size * self.cell_size))
+            # Horizontal lines
+            pygame.draw.line(surface, WHITE,
+                             (self.x, self.y + i * self.cell_size),
+                             (self.x + self.grid_size * self.cell_size, self.y + i * self.cell_size))
+
+        # Draw column numbers (1-10)
+        for i in range(self.grid_size):
+            num_text = datetime_font.render(str(i + 1), True, WHITE)
+            num_rect = num_text.get_rect(center=(self.x + (i + 0.5) * self.cell_size,
+                                                 self.y - 20))
+            surface.blit(num_text, num_rect)
+
+        # Draw row letters (A-J)
+        for i in range(self.grid_size):
+            letter_text = datetime_font.render(self.letters[i], True, WHITE)
+            letter_rect = letter_text.get_rect(center=(self.x - 20,
+                                                       self.y + (i + 0.5) * self.cell_size))
+            surface.blit(letter_text, letter_rect)
+
+
+def place_ships_screen():
+    clock = pygame.time.Clock()
+    grid = Grid(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4)
+
+    # Create ships with different colors
+    ships = [
+        Ship("Carrier", 5, (139, 69, 19)),  # Brown
+        Ship("Battleship", 4, (169, 169, 169)),  # Dark Gray
+        Ship("Destroyer", 4, (105, 105, 105)),  # Dim Gray
+        Ship("Cruiser", 3, (128, 128, 128)),  # Gray
+        Ship("Submarine", 2, (192, 192, 192))  # Light Gray
+    ]
+
+    current_ship = 0
+    selected_ship = None
+
+    # Initial position for the first ship
+    ships[0].x = grid.x
+    ships[0].y = grid.y + grid.cell_size * grid.grid_size + 50
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r and selected_ship:
+                    # Rotate ship
+                    selected_ship.is_vertical = not selected_ship.is_vertical
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if current_ship < len(ships):
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    ship = ships[current_ship]
+
+                    # Check if click is within grid bounds
+                    if (grid.x <= mouse_x <= grid.x + grid.cell_size * grid.grid_size and
+                            grid.y <= mouse_y <= grid.y + grid.cell_size * grid.grid_size):
+
+                        # Convert mouse position to grid coordinates
+                        grid_x = (mouse_x - grid.x) // grid.cell_size
+                        grid_y = (mouse_y - grid.y) // grid.cell_size
+
+                        # Check if placement is valid
+                        can_place = True
+                        ship_cells = []
+
+                        for i in range(ship.size):
+                            if ship.is_vertical:
+                                if grid_y + i >= grid.grid_size:
+                                    can_place = False
+                                    break
+                                if grid.cells[grid_y + i][grid_x] is not None:
+                                    can_place = False
+                                    break
+                                ship_cells.append((grid_x, grid_y + i))
+                            else:
+                                if grid_x + i >= grid.grid_size:
+                                    can_place = False
+                                    break
+                                if grid.cells[grid_y][grid_x + i] is not None:
+                                    can_place = False
+                                    break
+                                ship_cells.append((grid_x + i, grid_y))
+
+                        if can_place:
+                            # Place the ship
+                            for cell in ship_cells:
+                                grid.cells[cell[1]][cell[0]] = ship
+                            ship.cells = ship_cells
+                            ship.is_placed = True
+                            current_ship += 1
+
+                            if current_ship < len(ships):
+                                ships[current_ship].x = grid.x
+                                ships[current_ship].y = grid.y + grid.cell_size * grid.grid_size + 50
+
+        # Update
+        if current_ship < len(ships):
+            selected_ship = ships[current_ship]
+            if not selected_ship.is_placed:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                selected_ship.x = mouse_x - grid.cell_size // 2
+                selected_ship.y = mouse_y - grid.cell_size // 2
+
+        # Draw
+        screen.fill(SKY_BLUE)
+
+        # Draw instructions
+        instructions = [
+            "Place your ships on the grid",
+            "Press 'R' to rotate",
+            "Click to place ship",
+            f"Currently placing: {ships[current_ship].name if current_ship < len(ships) else 'All ships placed'}"
+        ]
+
+        for i, text in enumerate(instructions):
+            text_surface = datetime_font.render(text, True, WHITE)
+            screen.blit(text_surface, (20, 20 + i * 30))
+
+        # Draw grid
+        grid.draw(screen)
+
+        # Draw placed ships
+        for ship in ships:
+            if ship.is_placed:
+                ship.draw(screen, grid.x, grid.y, grid.cell_size)
+
+        # Draw current ship preview
+        if current_ship < len(ships) and not ships[current_ship].is_placed:
+            ships[current_ship].draw(screen, grid.x, grid.y, grid.cell_size)
+
+        pygame.display.flip()
+        clock.tick(60)
+
+
 def main_menu():
     clock = pygame.time.Clock()
 
@@ -284,7 +472,7 @@ def main_menu():
             for button in buttons:
                 if button.handle_event(event):
                     if button.text == "Start Game":
-                        print("Starting game...")
+                        place_ships_screen()
                     elif button.text == "Credits":
                         print("Showing credits...")
                     elif button.text == "Quit":
