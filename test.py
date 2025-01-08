@@ -27,6 +27,8 @@ SAND_COLOR = (238, 214, 175)
 SKY_BLUE = (135, 206, 235)
 SEA_BLUE = (0, 105, 148)
 ISLAND_GREEN = (34, 139, 34)
+GRID_BG = (0, 45, 98)  # Darker blue for grid background
+WATER_BLUE = (65, 105, 225)  # Blue for water cells
 
 # Font settings
 title_font = pygame.font.Font(None, 74)
@@ -255,25 +257,18 @@ class Ship:
         self.y = 0
         self.is_vertical = False
         self.is_placed = False
-        self.cells = []  # Store the grid cells the ship occupies
+        self.cells = []
+        self.sprite = BattleshipSprite(size, name)
 
     def draw(self, surface, grid_x, grid_y, cell_size):
         if not self.is_placed:
-            # Draw the ship preview
-            width = self.size * cell_size if not self.is_vertical else cell_size
-            height = cell_size if not self.is_vertical else self.size * cell_size
-            ship_rect = pygame.Rect(self.x, self.y, width, height)
-            pygame.draw.rect(surface, self.color, ship_rect)
-            pygame.draw.rect(surface, WHITE, ship_rect, 2)
+            self.sprite.is_vertical = self.is_vertical
+            self.sprite.draw(surface, self.x, self.y, cell_size, self.color)
         else:
-            # Draw the placed ship
-            for cell in self.cells:
-                x = grid_x + cell[0] * cell_size
-                y = grid_y + cell[1] * cell_size
-                ship_rect = pygame.Rect(x, y, cell_size, cell_size)
-                pygame.draw.rect(surface, self.color, ship_rect)
-                pygame.draw.rect(surface, WHITE, ship_rect, 2)
-
+            cell_x = grid_x + self.cells[0][0] * cell_size
+            cell_y = grid_y + self.cells[0][1] * cell_size
+            self.sprite.is_vertical = self.is_vertical
+            self.sprite.draw(surface, cell_x, cell_y, cell_size, self.color)
 
 class Grid:
     def __init__(self, x, y, cell_size=40):
@@ -285,11 +280,34 @@ class Grid:
         self.letters = 'ABCDEFGHIJ'
 
     def draw(self, surface):
-        # Draw grid background
-        grid_rect = pygame.Rect(self.x, self.y,
-                                self.cell_size * self.grid_size,
-                                self.cell_size * self.grid_size)
-        pygame.draw.rect(surface, NAVY_BLUE, grid_rect)
+        # Draw grid background with water effect
+        grid_rect = pygame.Rect(self.x - 20, self.y - 20,
+                                self.cell_size * self.grid_size + 40,
+                                self.cell_size * self.grid_size + 40)
+
+        # Draw outer border with gradient effect
+        pygame.draw.rect(surface, GRID_BG, grid_rect)
+        for i in range(5):  # Create border gradient
+            border_rect = pygame.Rect(self.x - i, self.y - i,
+                                      self.cell_size * self.grid_size + i * 2,
+                                      self.cell_size * self.grid_size + i * 2)
+            pygame.draw.rect(surface, WATER_BLUE, border_rect, 2)
+
+        # Draw water-like cells
+        for row in range(self.grid_size):
+            for col in range(self.grid_size):
+                cell_x = self.x + col * self.cell_size
+                cell_y = self.y + row * self.cell_size
+                cell_rect = pygame.Rect(cell_x, cell_y, self.cell_size, self.cell_size)
+
+                # Create slight variation in cell colors for water effect
+                cell_color = (
+                    WATER_BLUE[0],
+                    WATER_BLUE[1],
+                    WATER_BLUE[2] + random.randint(-20, 20)
+                )
+                pygame.draw.rect(surface, cell_color, cell_rect)
+                pygame.draw.rect(surface, WHITE, cell_rect, 1)
 
         # Draw grid lines
         for i in range(self.grid_size + 1):
@@ -316,18 +334,200 @@ class Grid:
                                                        self.y + (i + 0.5) * self.cell_size))
             surface.blit(letter_text, letter_rect)
 
+class BattleshipSprite:
+    def __init__(self, size, ship_type):
+        self.size = size
+        self.ship_type = ship_type
+        self.is_vertical = False
+
+    def draw(self, surface, x, y, cell_size, color):
+        if self.is_vertical:
+            self._draw_vertical_ship(surface, x, y, cell_size, color)
+        else:
+            self._draw_horizontal_ship(surface, x, y, cell_size, color)
+
+    def _draw_horizontal_ship(self, surface, x, y, cell_size, color):
+        # Main hull
+        ship_rect = pygame.Rect(x, y + cell_size * 0.2,
+                              cell_size * self.size, cell_size * 0.6)
+        pygame.draw.rect(surface, color, ship_rect)
+        pygame.draw.rect(surface, WHITE, ship_rect, 2)
+
+        if self.ship_type == "Submarine":
+            # Submarine specific features
+            # Conning tower (periscope tower)
+            tower_x = x + cell_size * 0.5
+            tower_width = cell_size * 0.4
+            tower_height = cell_size * 0.4
+            pygame.draw.rect(surface, color,
+                           (tower_x, y, tower_width, tower_height))
+            pygame.draw.rect(surface, WHITE,
+                           (tower_x, y, tower_width, tower_height), 2)
+            # Periscope
+            pygame.draw.line(surface, WHITE,
+                           (tower_x + tower_width/2, y),
+                           (tower_x + tower_width/2, y - cell_size * 0.2), 2)
+
+        elif self.ship_type == "Cruiser":
+            # Cruiser specific features
+            # Main gun turret
+            pygame.draw.circle(surface, color,
+                             (int(x + cell_size * 1.5),
+                              int(y + cell_size * 0.2)),
+                             int(cell_size * 0.2))
+            # Bridge
+            pygame.draw.rect(surface, color,
+                           (x + cell_size * 0.5, y,
+                            cell_size * 0.8, cell_size * 0.3))
+
+        elif self.ship_type == "Battleship":
+            # Battleship specific features
+            # Multiple gun turrets
+            for i in [0.7, 1.5, 2.3]:
+                pygame.draw.circle(surface, color,
+                                 (int(x + cell_size * i),
+                                  int(y + cell_size * 0.2)),
+                                 int(cell_size * 0.25))
+            # Large bridge
+            pygame.draw.rect(surface, color,
+                           (x + cell_size, y - cell_size * 0.2,
+                            cell_size, cell_size * 0.4))
+
+        elif self.ship_type == "Destroyer":
+            # Destroyer specific features
+            # Sleek bridge
+            pygame.draw.polygon(surface, color, [
+                (x + cell_size, y),
+                (x + cell_size * 2, y),
+                (x + cell_size * 1.7, y + cell_size * 0.3),
+                (x + cell_size * 1.3, y + cell_size * 0.3)
+            ])
+            # Gun turrets
+            for i in [0.8, 2.2]:
+                pygame.draw.circle(surface, color,
+                                 (int(x + cell_size * i),
+                                  int(y + cell_size * 0.2)),
+                                 int(cell_size * 0.2))
+
+        elif self.ship_type == "Air Carrier":
+            # Aircraft Carrier specific features
+            # Flat top deck
+            pygame.draw.rect(surface, GRAY,
+                           (x, y + cell_size * 0.1,
+                            cell_size * self.size, cell_size * 0.2))
+            # Flight deck markings
+            for i in range(self.size):
+                pygame.draw.line(surface, WHITE,
+                               (x + cell_size * i, y + cell_size * 0.2),
+                               (x + cell_size * (i + 0.8), y + cell_size * 0.2), 2)
+            # Island structure (control tower)
+            pygame.draw.rect(surface, color,
+                           (x + cell_size * 3, y - cell_size * 0.3,
+                            cell_size * 0.8, cell_size * 0.5))
+            # Radar on top of island
+            pygame.draw.lines(surface, WHITE, False, [
+                (x + cell_size * 3.2, y - cell_size * 0.3),
+                (x + cell_size * 3.4, y - cell_size * 0.5),
+                (x + cell_size * 3.6, y - cell_size * 0.3)
+            ], 2)
+
+    def _draw_vertical_ship(self, surface, x, y, cell_size, color):
+        # Main hull
+        ship_rect = pygame.Rect(x + cell_size * 0.2, y,
+                              cell_size * 0.6, cell_size * self.size)
+        pygame.draw.rect(surface, color, ship_rect)
+        pygame.draw.rect(surface, WHITE, ship_rect, 2)
+
+        if self.ship_type == "Submarine":
+            # Submarine specific features
+            tower_y = y + cell_size * 0.5
+            tower_width = cell_size * 0.4
+            tower_height = cell_size * 0.4
+            pygame.draw.rect(surface, color,
+                           (x, tower_y, tower_width, tower_height))
+            pygame.draw.rect(surface, WHITE,
+                           (x, tower_y, tower_width, tower_height), 2)
+            pygame.draw.line(surface, WHITE,
+                           (x, tower_y + tower_height/2),
+                           (x - cell_size * 0.2, tower_y + tower_height/2), 2)
+
+        elif self.ship_type == "Cruiser":
+            # Cruiser specific features
+            # Main gun turret
+            pygame.draw.circle(surface, color,
+                             (int(x + cell_size * 0.2),
+                              int(y + cell_size * 1.5)),
+                             int(cell_size * 0.2))
+            # Bridge
+            pygame.draw.rect(surface, color,
+                           (x, y + cell_size * 0.5,
+                            cell_size * 0.3, cell_size * 0.8))
+
+        elif self.ship_type == "Battleship":
+            # Battleship specific features
+            # Multiple gun turrets
+            for i in [0.7, 1.5, 2.3]:
+                pygame.draw.circle(surface, color,
+                                 (int(x + cell_size * 0.2),
+                                  int(y + cell_size * i)),
+                                 int(cell_size * 0.25))
+            # Large bridge
+            pygame.draw.rect(surface, color,
+                           (x - cell_size * 0.2, y + cell_size,
+                            cell_size * 0.4, cell_size))
+
+        elif self.ship_type == "Destroyer":
+            # Destroyer specific features
+            # Sleek bridge
+            pygame.draw.polygon(surface, color, [
+                (x, y + cell_size),
+                (x, y + cell_size * 2),
+                (x + cell_size * 0.3, y + cell_size * 1.7),
+                (x + cell_size * 0.3, y + cell_size * 1.3)
+            ])
+            # Gun turrets
+            for i in [0.8, 2.2]:
+                pygame.draw.circle(surface, color,
+                                 (int(x + cell_size * 0.2),
+                                  int(y + cell_size * i)),
+                                 int(cell_size * 0.2))
+
+        elif self.ship_type == "Air Carrier":
+            # Aircraft Carrier specific features
+            # Flat top deck
+            pygame.draw.rect(surface, GRAY,
+                           (x + cell_size * 0.1, y,
+                            cell_size * 0.2, cell_size * self.size))
+            # Flight deck markings
+            for i in range(self.size):
+                pygame.draw.line(surface, WHITE,
+                               (x + cell_size * 0.2, y + cell_size * i),
+                               (x + cell_size * 0.2, y + cell_size * (i + 0.8)), 2)
+            # Island structure (control tower)
+            pygame.draw.rect(surface, color,
+                           (x - cell_size * 0.3, y + cell_size * 3,
+                            cell_size * 0.5, cell_size * 0.8))
+            # Radar on top of island
+            pygame.draw.lines(surface, WHITE, False, [
+                (x - cell_size * 0.3, y + cell_size * 3.2),
+                (x - cell_size * 0.5, y + cell_size * 3.4),
+                (x - cell_size * 0.3, y + cell_size * 3.6)
+            ], 2)
+
+
+
 
 def place_ships_screen():
     clock = pygame.time.Clock()
     grid = Grid(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4)
 
-    # Create ships with different colors
+    # Create ships with different colors and proper names
     ships = [
-        Ship("Carrier", 5, (139, 69, 19)),  # Brown
-        Ship("Battleship", 4, (169, 169, 169)),  # Dark Gray
-        Ship("Destroyer", 4, (105, 105, 105)),  # Dim Gray
-        Ship("Cruiser", 3, (128, 128, 128)),  # Gray
-        Ship("Submarine", 2, (192, 192, 192))  # Light Gray
+        Ship("Air Carrier", 5, (100, 100, 100)),  # Gray for carrier
+        Ship("Battleship", 4, (72, 72, 72)),  # Darker gray for battleship
+        Ship("Destroyer", 4, (128, 128, 128)),  # Medium gray for destroyer
+        Ship("Cruiser", 3, (169, 169, 169)),  # Light gray for cruiser
+        Ship("Submarine", 2, (192, 192, 192))  # Very light gray for submarine
     ]
 
     current_ship = 0
@@ -548,6 +748,7 @@ def main_menu():
 
         pygame.display.flip()
         clock.tick(60)
+
 
 if __name__ == "__main__":
     main_menu()
